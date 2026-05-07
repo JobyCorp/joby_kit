@@ -5,6 +5,32 @@ This project uses [JobyKit](https://github.com/jobycorp/joby_kit) — an
 opinionated, agentic-first design system that wraps daisyUI and exposes a
 machine-readable manifest of every UI component the app supports.
 
+### Design freedom is the point
+
+JobyKit wrappers carry the **contract** (typed attrs, `data-component`,
+manifest entry). They are deliberately **style-agnostic**. Visual style —
+typography rhythm, motion, palette accents, layout, hierarchy, illustrative
+touches — is the host app's prerogative, and should be **distinctive**.
+Generic AI aesthetic is the failure mode this kit is meant to prevent.
+
+The build order below tells you *which component to reach for*. It does
+**not** tell you what the page should look like. Apply design judgment
+(or invoke a frontend-design skill) when building app surfaces.
+
+### Composition vs. creation
+
+- **Composition** — arranging existing wrappers using Tailwind for layout,
+  spacing, motion, and visual hierarchy. **No restriction.** This is where
+  design happens. A page may use as much creative Tailwind as it wants, as
+  long as every primitive flows through a wrapper.
+- **Creation** — making a new visual primitive (a button family, a card
+  variant, a chat bubble). Funnels through the wrapper layer (steps 3–4 of
+  the build order) so the manifest stays the source of truth.
+
+Test: if you wrote `<button class="…">` when `<.button>` exists, that is
+creation masquerading as composition. Lift it into the wrapper or use the
+existing one.
+
 ### Before writing any UI markup
 
 1. **Read the manifest.** Fetch `/design.json` (the host serves it with
@@ -24,21 +50,28 @@ machine-readable manifest of every UI component the app supports.
    module. Surfaces on `/custom-designs`.
 3. **Core wrapper exists?** Use it. Lives in
    `<app>_web/components/core_components.ex`. Surfaces on `/design`.
-4. **daisyUI primitive exists?** Wrap it as a core component first
-   (register it in `<app>_web/design_manifest.ex`), then use the wrapper.
-   The daisyUI catalogue at the bottom of `/design` lists every primitive.
+4. **daisyUI primitive exists?** If it will be used in more than one
+   place, or carries persistent visual decisions, wrap it as a core
+   component first (register it in `<app>_web/design_manifest.ex`) and
+   then use the wrapper. For one-off scaffolding inside a single page,
+   the primitive can be used directly — but if you catch yourself
+   repeating it, lift it. The daisyUI catalogue at the bottom of
+   `/design` lists every primitive.
 5. **None of the above?** Build from Tailwind + theme tokens. Expose the
    result as a core wrapper (kit page) or generic/domain composite
    (custom-designs page) and register it in the manifest.
 
-### Wrapper contract (every Bardo component must satisfy)
+### Wrapper contract (every component must satisfy)
 
 1. Declare every prop with `attr` (use `values:` constraints for
    variant/tone/size enums).
 2. Carry `data-component="App.Module.function"` on the root element.
 3. Accept `:rest, :global` so callers can pass id/class/aria-*/phx-*.
-4. Internals compose theme tokens + daisyUI primitive classes only — no
-   ad-hoc Tailwind utility soup.
+4. **Wrapper internals** compose daisyUI primitives + theme tokens — that
+   keeps the wrapper style-coherent everywhere it's used. **Page
+   composition** (the file calling the wrapper) is free to use Tailwind
+   for layout, motion, gradients, and visual hierarchy. That is where
+   style lives.
 5. Register every component in `<app>_web/design_manifest.ex`. Components
    missing from the manifest are invisible to agents.
 
@@ -56,11 +89,16 @@ machine-readable manifest of every UI component the app supports.
 **Never** add new components to `/design` directly — it's the kit-curated
 surface and stays uniform across every JobyKit consumer.
 
-### daisyUI vs raw Tailwind
+### daisyUI vs raw Tailwind (for primitives)
 
-This app uses daisyUI as the substrate. **Use daisyUI primitives** (`btn`,
-`badge`, `alert`, `card`, `stat`, `progress`, `radial-progress`, etc.)
-through the corresponding core wrappers. Roll your own Tailwind only when
-nothing in daisyUI fits — and then expose the result as a wrapper so
+This app uses daisyUI as the substrate for **primitives** (buttons, badges,
+alerts, cards, stats, progress, etc.). When you need one of those, reach
+for the corresponding core wrapper. Roll your own Tailwind primitive only
+when nothing in daisyUI fits — and then expose the result as a wrapper so
 future markup composes through the wrapper, not the raw classes.
+
+This rule is about the *primitive layer*. Tailwind utilities for layout,
+spacing, motion, gradients, and visual hierarchy on the page that
+*composes* those wrappers are encouraged — see "Composition vs. creation"
+above.
 <!-- jobykit:end -->

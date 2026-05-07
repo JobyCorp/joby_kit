@@ -19,7 +19,7 @@ defmodule JobyKit.AgentsMd do
   @phoenix_anti_daisy_pattern ~r/^- \*\*Always\*\* manually write your own tailwind-based components instead of using daisyUI[^\n]*$/m
 
   @phoenix_anti_daisy_replacement """
-  - **Always** use the daisyUI primitives via this app's core wrappers (registered in `design_manifest.ex` and surfaced on `/design`). When daisyUI doesn't have a primitive that fits, build a wrapper from Tailwind first and register it — see the JobyKit guidelines below for the full build order
+  - **Always** reach for daisyUI primitives via this app's core wrappers (registered in `design_manifest.ex` and surfaced on `/design`) when you need a primitive. Page-level Tailwind for layout, motion, and visual hierarchy is encouraged — see "Composition vs. creation" in the JobyKit guidelines below for the full build order and the line between page styling and primitive creation
   """
 
   @doc """

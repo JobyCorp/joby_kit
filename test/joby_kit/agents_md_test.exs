@@ -41,7 +41,7 @@ defmodule JobyKit.AgentsMdTest do
     contents = File.read!(path)
 
     refute contents =~ "manually write your own tailwind-based components instead of using daisyUI"
-    assert contents =~ "use the daisyUI primitives via this app's core wrappers"
+    assert contents =~ "reach for daisyUI primitives via this app's core wrappers"
     assert contents =~ "some other rule"
     assert contents =~ "one more rule"
   end
