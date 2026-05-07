@@ -74,8 +74,17 @@ defmodule Mix.Tasks.JobyKit.Install do
       copy_or_skip(template_path, dest, assigns, force?)
     end)
 
+    patch_agents_md()
     print_next_steps(web_module)
     :ok
+  end
+
+  defp patch_agents_md(path \\ "AGENTS.md") do
+    case JobyKit.AgentsMd.patch(path) do
+      :created -> Mix.shell().info("* create #{path}")
+      :patched -> Mix.shell().info("* update #{path} (added JobyKit guidelines; replaced daisyUI conflict line if present)")
+      :unchanged -> :ok
+    end
   end
 
   defp web_module_name(nil, app) do
