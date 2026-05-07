@@ -3,6 +3,16 @@ defmodule JobyKit.ManifestTest do
 
   alias JobyKit.Test.Manifest
 
+  setup do
+    # Generator tests run Mix.Project.in_project/4 which can purge and
+    # reload test/support modules. That wipes Phoenix.Component's
+    # compile-time __components__/0 metadata. Force-reload the test
+    # components so introspection sees the attrs we declared.
+    Code.ensure_loaded!(JobyKit.Test.Components)
+    Code.ensure_loaded!(JobyKit.Test.Manifest)
+    :ok
+  end
+
   test "registers categories in declaration order" do
     assert Manifest.categories() == [:core, :composite]
   end
