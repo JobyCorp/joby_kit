@@ -25,3 +25,4 @@ joby_kit-*.tar
 # Ignore env files
 *.env
 .envrc
+/tmp/

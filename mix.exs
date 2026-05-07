@@ -52,7 +52,7 @@ defmodule JobyKit.MixProject do
         "GitHub" => @source_url
       },
       files:
-        ~w(lib priv .formatter.exs mix.exs README.md LICENSE CHANGELOG.md)
+        ~w(lib priv/templates .formatter.exs mix.exs README.md LICENSE CHANGELOG.md)
     ]
   end
 

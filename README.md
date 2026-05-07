@@ -47,6 +47,31 @@ end
 > `heroicons` Tailwind plugin is also expected for the chevron in the
 > signature card disclosure.
 
+## Generators
+
+Two mix tasks scaffold the manifest, previews, and LiveViews so you don't
+have to write the boilerplate by hand:
+
+```sh
+# Existing project: generates four files under lib/<your_app>_web/ and prints
+# the routes you need to add to router.ex. Idempotent — skips files that
+# already exist (use --force to overwrite).
+mix joby_kit.install
+
+# Fresh phx.new project: composes joby_kit.install with three extra
+# steps — replaces the default `get "/", PageController, :home` route with
+# `live "/", DesignSystemLive, :index`, adds the /custom-designs and
+# /design.json routes inline, and deletes the unused PageController and
+# PageHTML modules. Use --keep-page-controller to leave them in place.
+mix joby_kit.new
+```
+
+After either task, restart `mix phx.server`, visit `/design` and
+`/custom-designs`, and `curl /design.json` to see the manifest.
+
+The rest of this README walks through the same steps manually for projects
+that prefer a hand-rolled wiring.
+
 ### 1. Declare your manifest
 
 ```elixir
