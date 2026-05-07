@@ -75,6 +75,7 @@ defmodule Mix.Tasks.JobyKit.Install do
     end)
 
     patch_agents_md()
+    patch_app_css()
     print_next_steps(web_module)
     :ok
   end
@@ -84,6 +85,14 @@ defmodule Mix.Tasks.JobyKit.Install do
       :created -> Mix.shell().info("* create #{path}")
       :patched -> Mix.shell().info("* update #{path} (added JobyKit guidelines; replaced daisyUI conflict line if present)")
       :unchanged -> :ok
+    end
+  end
+
+  defp patch_app_css(path \\ "assets/css/app.css") do
+    case JobyKit.AppCss.patch(path) do
+      :patched -> Mix.shell().info("* update #{path} (added @source for deps/joby_kit/lib so Tailwind scans kit components)")
+      :unchanged -> :ok
+      :missing -> :ok
     end
   end
 

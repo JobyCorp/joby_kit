@@ -68,6 +68,23 @@ defmodule Mix.Tasks.JobyKit.InstallTest do
     end)
   end
 
+  test "patches assets/css/app.css with the joby_kit @source line", %{tmp_dir: tmp_dir} do
+    in_tmp_project(tmp_dir, "demo_app", fn ->
+      File.mkdir_p!("assets/css")
+
+      File.write!("assets/css/app.css", """
+      @import "tailwindcss" source(none);
+      @source "../css";
+      @source "../js";
+      @source "../../lib/demo_app_web";
+      """)
+
+      Mix.Tasks.JobyKit.Install.run([])
+
+      assert File.read!("assets/css/app.css") =~ ~s|@source "../../deps/joby_kit/lib";|
+    end)
+  end
+
   defp in_tmp_project(tmp_dir, app_name, fun) do
     project = Path.join(tmp_dir, app_name)
     File.mkdir_p!(project)
