@@ -4,9 +4,8 @@ defmodule <%= @web_module %>.DesignSystemLive do
   `JobyKit.PageComponent.page_component` filtered to `:core` entries
   from `<%= @web_module %>.DesignManifest`.
 
-  The kit's `simple_nav` shows the active link; the
-  agent-redirect callout (driven by `:custom_path`) tells contributors
-  where new composites and domain components belong.
+  The agent-redirect callout (driven by `:custom_path`) tells
+  contributors where new composites and domain components belong.
   """
 
   use <%= @web_module %>, :live_view
@@ -23,8 +22,6 @@ defmodule <%= @web_module %>.DesignSystemLive do
   def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash}>
-      <JobyKit.NavComponent.simple_nav active="design" brand="<%= @app_camel %>" />
-
       <main id="design-system-page" class="mx-auto max-w-6xl space-y-8 px-6 py-10">
         <header>
           <h1 class="text-3xl font-semibold leading-tight">Design System</h1>

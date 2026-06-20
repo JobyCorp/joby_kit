@@ -2,7 +2,7 @@ defmodule JobyKit.NavComponent do
   @moduledoc """
   Small kit-shipped navigation primitives. The `simple_nav/1` function
   component renders a three-link daisyUI navbar suitable for the
-  greenfield bootstrap (`mix joby_kit.new`) — Home / Design / Custom
+  greenfield bootstrap (`mix joby_kit.bootstrap`) — Home / Design / Custom
   Designs — with an active-state highlight.
 
   Hosts can use it anywhere: a layout, a LiveView render, or a function

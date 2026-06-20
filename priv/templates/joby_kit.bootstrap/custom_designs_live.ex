@@ -23,8 +23,6 @@ defmodule <%= @web_module %>.CustomDesignsLive do
   def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash}>
-      <JobyKit.NavComponent.simple_nav active="custom-designs" brand="<%= @app_camel %>" />
-
       <main id="custom-designs-page" class="mx-auto max-w-6xl space-y-8 px-6 py-10">
         <header>
           <h1 class="text-3xl font-semibold leading-tight">Custom Designs</h1>

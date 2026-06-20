@@ -33,9 +33,9 @@ defmodule Mix.Tasks.JobyKit.Install do
     2. Restart the dev server.
     3. Visit `/design` and `/custom-designs`.
 
-  See the `mix joby_kit.new` task for a more aggressive variant aimed at
-  fresh `mix phx.new` projects (replaces the default Phoenix landing
-  page).
+  See the `mix joby_kit.bootstrap` task for a more aggressive variant
+  aimed at fresh `mix phx.new` projects (replaces the default Phoenix
+  landing page). For a from-scratch app, see `mix joby_kit.new`.
   """
 
   use Mix.Task
@@ -46,7 +46,10 @@ defmodule Mix.Tasks.JobyKit.Install do
   def run(args) do
     {opts, _argv, _invalid} = OptionParser.parse(args, switches: @switches)
 
-    app = Keyword.fetch!(Mix.Project.config(), :app)
+    # Tolerate missing project context (e.g. when invoked from a Mix
+    # archive after `mix archive.install`). When there's no `:app`, the
+    # caller must pass `--web` so we can derive the web module name.
+    app = Keyword.get(Mix.Project.config(), :app)
     web_module = web_module_name(opts[:web], app)
     web_path = Macro.underscore(web_module)
     web_module_anchor = String.replace(web_path, "/", "")
@@ -61,6 +64,7 @@ defmodule Mix.Tasks.JobyKit.Install do
     targets = [
       {"design_manifest.ex", "lib/#{web_path}/design_manifest.ex"},
       {"design_previews.ex", "lib/#{web_path}/design_previews.ex"},
+      {"composite_components.ex", "lib/#{web_path}/components/composite_components.ex"},
       {"design_system_live.ex", "lib/#{web_path}/live/design_system_live.ex"},
       {"custom_designs_live.ex", "lib/#{web_path}/live/custom_designs_live.ex"}
     ]
@@ -75,9 +79,58 @@ defmodule Mix.Tasks.JobyKit.Install do
     end)
 
     patch_agents_md()
+    patch_claude_md()
     patch_app_css()
+    patch_layout_nav(web_path)
     print_next_steps(web_module)
     :ok
+  end
+
+  defp patch_layout_nav(web_path) do
+    # Phoenix 1.8 puts the layout markup either in app.html.heex (the
+    # standard) or in the Layouts module's function component. Try both.
+    candidates = [
+      "lib/#{web_path}/components/layouts/app.html.heex",
+      "lib/#{web_path}/components/layouts.ex"
+    ]
+
+    Enum.reduce_while(candidates, :no_match, fn path, _acc ->
+      case JobyKit.NavPatcher.patch(path) do
+        :patched ->
+          Mix.shell().info(
+            "* update #{path} (added /design and /custom-designs links to the nav)"
+          )
+
+          {:halt, :patched}
+
+        :unchanged ->
+          {:halt, :unchanged}
+
+        :no_nav_found ->
+          {:cont, :no_nav}
+
+        :missing ->
+          {:cont, :missing}
+      end
+    end)
+    |> case do
+      :patched -> :ok
+      :unchanged -> :ok
+      _other -> print_nav_manual_fallback(web_path)
+    end
+  end
+
+  defp print_nav_manual_fallback(web_path) do
+    Mix.shell().info("""
+    * skipped layout nav patch (no <nav>/<header> + <ul> found in
+      lib/#{web_path}/components/layouts/app.html.heex or layouts.ex).
+
+      Add these manually to your nav so /design and /custom-designs are
+      reachable:
+
+          <li><.link navigate={~p"/design"}>Design</.link></li>
+          <li><.link navigate={~p"/custom-designs"}>Custom Designs</.link></li>
+    """)
   end
 
   defp patch_agents_md(path \\ "AGENTS.md") do
@@ -88,12 +141,31 @@ defmodule Mix.Tasks.JobyKit.Install do
     end
   end
 
+  defp patch_claude_md(path \\ "CLAUDE.md") do
+    case JobyKit.ClaudeMd.patch(path) do
+      :created -> Mix.shell().info("* create #{path} (auto-loaded by Claude Code; inlines the wrapper-contract diagnostics)")
+      :patched -> Mix.shell().info("* update #{path} (added JobyKit wrapper-contract block)")
+      :unchanged -> :ok
+    end
+  end
+
   defp patch_app_css(path \\ "assets/css/app.css") do
     case JobyKit.AppCss.patch(path) do
       :patched -> Mix.shell().info("* update #{path} (added @source for deps/joby_kit/lib so Tailwind scans kit components)")
       :unchanged -> :ok
       :missing -> :ok
     end
+  end
+
+  defp web_module_name(nil, nil) do
+    Mix.raise("""
+    Could not determine the web module name.
+
+    `mix joby_kit.install` was invoked outside a Mix project (or in a
+    project without an `:app` configured). Re-run with --web:
+
+        mix joby_kit.install --web MyAppWeb
+    """)
   end
 
   defp web_module_name(nil, app) do
@@ -143,8 +215,34 @@ defmodule Mix.Tasks.JobyKit.Install do
     extend lib/#{Macro.underscore(web_module)}/design_manifest.ex with
     your own component registrations.
 
+    Note on core components: the manifest registers `JobyKit.CoreComponents`
+    (button, card, icon, input, flash). Your host's `<.button>` etc. still
+    resolve through `#{web_module}.CoreComponents` until you wire the kit
+    module in. To make `<.button>` etc. resolve to the kit version, edit
+    lib/#{Macro.underscore(web_module)}.ex's `html_helpers` to:
+
+        import JobyKit.CoreComponents
+        # remove or thin out: import #{web_module}.CoreComponents
+
+    Run `mix joby_kit.lint` to verify the contract holds end-to-end.
+
     Tip: run `curl http://localhost:PORT/design.json | jq` to see the
     machine-readable manifest your AI agents can consume.
+
+    ── For the AI agent picking up this app ──────────────────────────
+
+    CLAUDE.md (project root, auto-loaded by Claude Code) inlines the
+    wrapper-contract diagnostics. AGENTS.md has the full build order.
+
+    Symptoms you skipped step 1:
+
+      • `<button class="…">` / `<input>` / `<textarea>` in `.heex` when
+        `<.button>` / `<.input>` already exists.
+      • A private function component styled as if it were a primitive.
+      • A new component without `data-component`, `attr :rest, :global`,
+        or a `DesignManifest` entry.
+
+    Run `mix joby_kit.lint` to catch all three.
     """)
   end
 end

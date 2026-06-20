@@ -1,7 +1,7 @@
 defmodule JobyKit.MixProject do
   use Mix.Project
 
-  @version "0.1.0"
+  @version "0.2.0"
   @source_url "https://github.com/jobycorp/joby_kit"
 
   def project do
@@ -38,9 +38,10 @@ defmodule JobyKit.MixProject do
 
   defp description do
     """
-    An opinionated, agentic-first design-system kit for Phoenix + daisyUI apps.
-    Ships a manifest behaviour, a discoverable /design page, a JSON manifest at
-    /design.json for AI agents, and the daisyUI primitive catalogue.
+    An opinionated, agentic-first design-system kit for Phoenix + daisyUI.
+    Ships a component manifest, a /design page, a /design.json endpoint for
+    AI agents, contract-clean core wrappers, a wrapper-contract linter, and
+    mix tasks for installing into existing apps or generating new ones.
     """
   end
 

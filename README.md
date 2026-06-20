@@ -31,6 +31,28 @@ JobyKit pushes the codebase in the opposite direction. Your app declares a
 
 ## Install
 
+### Generate a new app from scratch
+
+Install the kit as a global Mix archive:
+
+```sh
+mix archive.install hex joby_kit
+```
+
+Then from anywhere:
+
+```sh
+mix joby_kit.new my_app   # wraps `mix phx.new` with the kit's HTML layer baked in
+cd my_app
+mix ecto.setup            # creates the dev DB and runs migrations
+mix phx.server
+```
+
+Visit `http://localhost:4000/`. `/design`, `/custom-designs`, and
+`/design.json` are wired automatically.
+
+### Add to an existing Phoenix app
+
 Add `joby_kit` to your `deps`:
 
 ```elixir
@@ -41,33 +63,26 @@ def deps do
 end
 ```
 
+Then run one of:
+
+```sh
+# Adds the manifest, previews, design pages, and patches AGENTS.md +
+# assets/css/app.css + your layout's nav. Idempotent.
+mix joby_kit.install
+
+# Same as install, plus replaces the default HomeLive at /, removes
+# PageController/PageHTML. For a kit-flavored greenfield start.
+mix joby_kit.bootstrap
+```
+
 > JobyKit ships function components built on `phoenix_live_view ~> 1.0` and
 > assumes daisyUI is installed in your Tailwind config (the default for
 > Phoenix 1.7+ apps generated with `mix phx.new`). Heroicons via the
-> `heroicons` Tailwind plugin is also expected for the chevron in the
-> signature card disclosure.
+> `heroicons` Tailwind plugin is also expected.
 
-## Generators
-
-Two mix tasks scaffold the manifest, previews, and LiveViews so you don't
-have to write the boilerplate by hand:
-
-```sh
-# Existing project: generates four files under lib/<your_app>_web/ and prints
-# the routes you need to add to router.ex. Idempotent — skips files that
-# already exist (use --force to overwrite).
-mix joby_kit.install
-
-# Fresh phx.new project: composes joby_kit.install with three extra
-# steps — replaces the default `get "/", PageController, :home` route with
-# `live "/", DesignSystemLive, :index`, adds the /custom-designs and
-# /design.json routes inline, and deletes the unused PageController and
-# PageHTML modules. Use --keep-page-controller to leave them in place.
-mix joby_kit.new
-```
-
-After either task, restart `mix phx.server`, visit `/design` and
-`/custom-designs`, and `curl /design.json` to see the manifest.
+After running `install` or `bootstrap`, restart `mix phx.server`, visit
+`/design` and `/custom-designs`, and `curl /design.json` to see the
+manifest.
 
 The rest of this README walks through the same steps manually for projects
 that prefer a hand-rolled wiring.
@@ -98,13 +113,13 @@ defmodule MyAppWeb.DesignManifest do
     summary: "Standard text button.",
     preview: &DesignPreviews.button_preview/1
 
-  component CoreComponents, :badge,
+  component CoreComponents, :card,
     category: :core,
-    daisy_basis: "badge",
-    summary: "Inline status label.",
-    preview: &DesignPreviews.badge_preview/1
+    daisy_basis: "card",
+    summary: "Padded content surface.",
+    preview: &DesignPreviews.card_preview/1
 
-  # ...one component/3 call per Bardo wrapper
+  # ...one component/3 call per host wrapper
 
   @doc """
   Tells JobyKit which daisyUI primitives are wrapped, so the catalogue
@@ -113,7 +128,7 @@ defmodule MyAppWeb.DesignManifest do
   def daisy_overrides do
     %{
       button: %{wrapper: "<.button>", anchor: "#jobykit-component-myappweb-corecomponents-button"},
-      badge: %{wrapper: "<.badge>", anchor: "#jobykit-component-myappweb-corecomponents-badge"}
+      card: %{wrapper: "<.card>", anchor: "#jobykit-component-myappweb-corecomponents-card"}
     }
   end
 end
@@ -226,7 +241,7 @@ displays:
 5. **Build from tokens.** Tailwind + theme tokens only. Expose the result
    as a core wrapper or composite and register it in the manifest.
 
-And a five-rule **wrapper contract** every Bardo component must satisfy:
+And a five-rule **wrapper contract** every host component must satisfy:
 
 1. Declare every prop with `attr`.
 2. Carry `data-component` on the root element.
@@ -238,11 +253,23 @@ The agent surface (`/design.json`) is a single source of truth even when the
 two pages render different subsets — kit core, generic composites, and
 domain composites are all returned together with category labels.
 
-## Status
+## What ships
 
-`v0.1.0` is the initial extraction from the Bardo project. The runtime
-shape is stable; generators (`mix joby_kit.install`,
-`mix joby_kit.gen.wrapper`, `mix joby_kit.lint`) are slated for `v0.2.0`.
+* **Runtime modules** — `JobyKit.Manifest`, `JobyKit.Contract`,
+  `JobyKit.DaisyCatalogue`, `JobyKit.SignatureComponent`,
+  `JobyKit.PageComponent`, `JobyKit.ManifestController`,
+  `JobyKit.NavComponent`, and `JobyKit.CoreComponents` (kit-shipped
+  wrappers: `<.button>`, `<.card>`, `<.icon>`, `<.input>`,
+  `<.flash>`, `<.flash_group>`, `<.header>`, `<.list>`, `<.table>`).
+* **Mix tasks** — `mix joby_kit.install` (existing app),
+  `mix joby_kit.bootstrap` (greenfield over an existing phx.new),
+  `mix joby_kit.new` (fresh app from scratch via `mix phx.new`),
+  `mix joby_kit.gen.wrapper` (scaffold a contract-clean wrapper +
+  manifest entry + preview), `mix joby_kit.lint` (verify the wrapper
+  contract).
+* **Patchers** — `JobyKit.AgentsMd` and `JobyKit.NavPatcher` keep
+  AGENTS.md and the host's nav consistent with the kit's stance, both
+  idempotent.
 
 ## License
 
