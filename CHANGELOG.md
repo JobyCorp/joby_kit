@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+* `table/1`: action cell gains `whitespace-nowrap`. Wrappable button
+  text let the cell under-report min-content under the `w-0` width
+  hack, so action buttons painted past the table edge on full-width
+  tables. Host apps carrying a scoped nowrap override for
+  `[data-component="JobyKit.CoreComponents.table"]` can drop it after
+  upgrading.
+
 ## v0.2.0
 
 Wrapper-contract enforcement: agent-experience fixes for the failure
