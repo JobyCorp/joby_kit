@@ -224,4 +224,39 @@ defmodule JobyKit.CoreComponentsTest do
       assert %Phoenix.LiveView.JS{} = CoreComponents.hide("#foo")
     end
   end
+
+  describe "flash id" do
+    test "defaults to flash-<kind> when the caller omits id" do
+      # `attr :id` puts :id in assigns as nil, so this can't be assign_new/3:
+      # the key is always present. Getting it wrong renders the toast with no
+      # id and a `hide(to: "#")` dismiss handler, which throws in the browser.
+      assigns = %{flash: %{"info" => "Saved."}}
+
+      html = rendered_to_string(~H|<CoreComponents.flash kind={:info} flash={@flash} />|)
+
+      assert html =~ ~s|id="flash-info"|
+      assert html =~ ~s|#flash-info|
+      refute html =~ ~s|&quot;to&quot;:&quot;#&quot;|
+    end
+
+    test "an explicit id still wins" do
+      assigns = %{flash: %{"error" => "Nope."}}
+
+      html =
+        rendered_to_string(
+          ~H|<CoreComponents.flash id="custom-toast" kind={:error} flash={@flash} />|
+        )
+
+      assert html =~ ~s|id="custom-toast"|
+      assert html =~ ~s|#custom-toast|
+    end
+
+    test "every toast flash_group renders carries a usable selector" do
+      assigns = %{flash: %{"info" => "Saved.", "error" => "Nope."}}
+
+      html = rendered_to_string(~H|<CoreComponents.flash_group flash={@flash} />|)
+
+      refute html =~ ~s|&quot;to&quot;:&quot;#&quot;|
+    end
+  end
 end

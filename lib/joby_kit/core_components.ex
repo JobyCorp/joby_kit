@@ -321,7 +321,12 @@ defmodule JobyKit.CoreComponents do
   slot :inner_block
 
   def flash(assigns) do
-    assigns = assign_new(assigns, :id, fn -> "flash-#{assigns.kind}" end)
+    # NOT `assign_new/3`: `attr :id` already puts `:id` in assigns (as nil when
+    # the caller omits it), so the key is always present and assign_new never
+    # fires. That left `@id` nil, which rendered the toast with no id *and*
+    # made the dismiss handler `JS.hide(to: "#")` — an invalid selector that
+    # throws in the browser on every click.
+    assigns = assign(assigns, :id, assigns.id || "flash-#{assigns.kind}")
 
     ~H"""
     <div
