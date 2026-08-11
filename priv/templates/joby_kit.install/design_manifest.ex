@@ -66,6 +66,33 @@ defmodule <%= @web_module %>.DesignManifest do
     summary: "Toast-style flash notice. Use inside `flash_group/1` from your root layout.",
     preview: &DesignPreviews.flash_preview/1
 
+  # `flash_group` is the page's single `toast` container — it's
+  # `position: fixed`, so an inline preview would float over the design
+  # page instead of sitting in its card. Registered without one so it's
+  # still discoverable (attrs, source, data-component) on /design and in
+  # /design.json.
+  component CoreComponents, :flash_group,
+    category: :core,
+    daisy_basis: "toast",
+    summary: "The root-layout flash container. Stacks every notice in one fixed toast."
+
+  component CoreComponents, :header,
+    category: :core,
+    summary: "Page or section header with subtitle and actions slots.",
+    preview: &DesignPreviews.header_preview/1
+
+  component CoreComponents, :list,
+    category: :core,
+    daisy_basis: "list",
+    summary: "Title/value pairs rendered as a daisyUI list.",
+    preview: &DesignPreviews.list_preview/1
+
+  component CoreComponents, :table,
+    category: :core,
+    daisy_basis: "table",
+    summary: "Column-slot table. Accepts a plain list or a LiveView stream.",
+    preview: &DesignPreviews.table_preview/1
+
   # ----------------------------------------------------------------- composite
   # `empty_state` is the worked example — a real composite that bundles
   # `<.icon>` + a heading + an optional action slot. Use it as the
@@ -102,6 +129,38 @@ defmodule <%= @web_module %>.DesignManifest do
       card: %{
         wrapper: "<.card>",
         anchor: "#jobykit-component-jobykit-corecomponents-card"
+      },
+      alert: %{
+        wrapper: "<.flash>",
+        anchor: "#jobykit-component-jobykit-corecomponents-flash"
+      },
+      toast: %{
+        wrapper: "<.flash_group>",
+        anchor: "#jobykit-component-jobykit-corecomponents-flash_group"
+      },
+      list: %{
+        wrapper: "<.list>",
+        anchor: "#jobykit-component-jobykit-corecomponents-list"
+      },
+      table: %{
+        wrapper: "<.table>",
+        anchor: "#jobykit-component-jobykit-corecomponents-table"
+      },
+      text_input: %{
+        wrapper: "<.input>",
+        anchor: "#jobykit-component-jobykit-corecomponents-input"
+      },
+      select: %{
+        wrapper: "<.input type=\"select\">",
+        anchor: "#jobykit-component-jobykit-corecomponents-input"
+      },
+      textarea: %{
+        wrapper: "<.input type=\"textarea\">",
+        anchor: "#jobykit-component-jobykit-corecomponents-input"
+      },
+      checkbox: %{
+        wrapper: "<.input type=\"checkbox\">",
+        anchor: "#jobykit-component-jobykit-corecomponents-input"
       }
     }
   end

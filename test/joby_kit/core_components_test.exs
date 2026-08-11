@@ -63,6 +63,22 @@ defmodule JobyKit.CoreComponentsTest do
       assert html =~ ~s|href="/"|
     end
 
+    test "type passes through so form buttons can opt out of submitting" do
+      assigns = %{}
+
+      html =
+        rendered_to_string(~H|<CoreComponents.button type="button">Cancel</CoreComponents.button>|)
+
+      assert html =~ ~s|type="button"|
+    end
+
+    test "omitting type leaves the attribute off (browser default applies)" do
+      assigns = %{}
+      html = rendered_to_string(~H|<CoreComponents.button>Save</CoreComponents.button>|)
+
+      refute html =~ ~s|type=|
+    end
+
     test "size attr appends btn-sm/btn-lg; md is implicit" do
       assigns = %{}
 
@@ -216,6 +232,28 @@ defmodule JobyKit.CoreComponentsTest do
       assert CoreComponents.translate_error({"value %{x} extra", count: 10}) ==
                "value %{x} extra"
     end
+
+    test "tolerates opts that don't implement String.Chars" do
+      # Ecto attaches these to every cast error on an array field. Stringifying
+      # opts eagerly (rather than inside the String.replace/4 function form)
+      # raises Protocol.UndefinedError on the tuple and 500s the whole form.
+      assert CoreComponents.translate_error(
+               {"is invalid", [type: {:array, :string}, validation: :cast]}
+             ) == "is invalid"
+    end
+
+    test "interpolates stringable opts alongside non-stringable ones" do
+      assert CoreComponents.translate_error(
+               {"expected %{count}", [count: 3, type: {:array, :id}, validation: :cast]}
+             ) == "expected 3"
+    end
+
+    test "tolerates non-stringable values in a matched placeholder's siblings" do
+      # A subset/inclusion error carries a list of atoms plus a real placeholder.
+      assert CoreComponents.translate_error(
+               {"must be one of %{count}", [count: 2, enum: [:a, :b], validation: :subset]}
+             ) == "must be one of 2"
+    end
   end
 
   describe "show/2 and hide/2" do
@@ -258,5 +296,72 @@ defmodule JobyKit.CoreComponentsTest do
 
       refute html =~ ~s|&quot;to&quot;:&quot;#&quot;|
     end
+  end
+
+  describe "flash positioning" do
+    test "a flash is an alert, not its own fixed toast container" do
+      # Each flash owning a `toast` container meant simultaneous notices
+      # stacked at the same fixed position and occluded each other.
+      assigns = %{flash: %{"info" => "Saved."}}
+
+      html = rendered_to_string(~H|<CoreComponents.flash kind={:info} flash={@flash} />|)
+
+      assert html =~ "alert"
+      refute html =~ "toast"
+    end
+
+    test "flash_group supplies exactly one toast container for every notice" do
+      assigns = %{flash: %{"info" => "Saved.", "error" => "Nope."}}
+
+      html = rendered_to_string(~H|<CoreComponents.flash_group flash={@flash} />|)
+
+      assert count(html, "toast toast-top toast-end") == 1
+      # Both notices still render, now stacked inside that one container.
+      assert html =~ "Saved."
+      assert html =~ "Nope."
+    end
+
+    test "the toast container is click-through; notices are not" do
+      assigns = %{flash: %{"info" => "Saved."}}
+
+      html = rendered_to_string(~H|<CoreComponents.flash_group flash={@flash} />|)
+
+      assert html =~ "pointer-events-none"
+      assert html =~ "pointer-events-auto"
+    end
+
+    test "info is a polite status; error stays assertive" do
+      assigns = %{flash: %{"info" => "Saved.", "error" => "Nope."}}
+
+      info = rendered_to_string(~H|<CoreComponents.flash kind={:info} flash={@flash} />|)
+      error = rendered_to_string(~H|<CoreComponents.flash kind={:error} flash={@flash} />|)
+
+      assert info =~ ~s|role="status"|
+      assert error =~ ~s|role="alert"|
+    end
+
+    test "class is declared, so it merges into the root instead of colliding" do
+      # Previously `class` arrived via :rest and landed as a second class
+      # attribute alongside the hardcoded identity classes.
+      assigns = %{flash: %{"info" => "Saved."}}
+
+      flash =
+        rendered_to_string(~H|<CoreComponents.flash kind={:info} flash={@flash} class="mt-4" />|)
+
+      group = rendered_to_string(~H|<CoreComponents.flash_group flash={@flash} class="z-10" />|)
+
+      assert root_class(flash) =~ "alert"
+      assert root_class(flash) =~ "mt-4"
+      assert root_class(group) =~ "toast"
+      assert root_class(group) =~ "z-10"
+    end
+  end
+
+  defp count(haystack, needle), do: length(String.split(haystack, needle)) - 1
+
+  # The class attribute of the first (root) element in the rendered markup.
+  defp root_class(html) do
+    [_, class] = Regex.run(~r/class="([^"]*)"/, html)
+    class
   end
 end

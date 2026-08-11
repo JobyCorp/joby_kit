@@ -75,8 +75,13 @@ defmodule JobyKit.CoreComponents do
       <.button>Send</.button>
       <.button variant="primary" size="sm">Save</.button>
       <.button navigate={~p"/dashboard"}>Home</.button>
+
+  `type` passes through, so a non-submitting button inside a form is
+  `<.button type="button">`. Omitted, the browser default applies —
+  `submit` inside a form.
   """
-  attr :rest, :global, include: ~w(href navigate patch method download name value disabled)
+  attr :rest, :global,
+    include: ~w(href navigate patch method download name value disabled type form)
   attr :class, :any, default: nil
   attr :variant, :string, values: ~w(primary)
   attr :size, :string, values: ~w(sm md lg), default: "md"
@@ -307,8 +312,11 @@ defmodule JobyKit.CoreComponents do
   # -------------------------------------------------------------- flash
 
   @doc """
-  Renders a single flash notice. Use inside `flash_group/1` (which the
-  layout calls), or directly when you want a one-off toast.
+  Renders a single flash notice as a daisyUI `alert`.
+
+  Positioning belongs to the container, not the notice: `flash_group/1`
+  supplies the single `toast` that stacks every notice. Rendered on its
+  own, `flash/1` sits inline wherever you put it.
 
       <.flash kind={:info} flash={@flash} />
       <.flash kind={:error} title="Heads up">Something happened</.flash>
@@ -317,6 +325,7 @@ defmodule JobyKit.CoreComponents do
   attr :flash, :map, default: %{}
   attr :title, :string, default: nil
   attr :kind, :atom, values: [:info, :error], required: true
+  attr :class, :any, default: nil
   attr :rest, :global
 
   slot :inner_block
@@ -335,26 +344,25 @@ defmodule JobyKit.CoreComponents do
       id={@id}
       data-component="JobyKit.CoreComponents.flash"
       phx-click={JS.push("lv:clear-flash", value: %{key: @kind}) |> hide("##{@id}")}
-      role="alert"
-      class="toast toast-top toast-end z-50"
+      role={if @kind == :info, do: "status", else: "alert"}
+      class={[
+        "alert w-80 sm:w-96 max-w-80 sm:max-w-96 text-wrap pointer-events-auto",
+        @kind == :info && "alert-info",
+        @kind == :error && "alert-error",
+        @class
+      ]}
       {@rest}
     >
-      <div class={[
-        "alert w-80 sm:w-96 max-w-80 sm:max-w-96 text-wrap",
-        @kind == :info && "alert-info",
-        @kind == :error && "alert-error"
-      ]}>
-        <.icon :if={@kind == :info} name="hero-information-circle" class="size-5 shrink-0" />
-        <.icon :if={@kind == :error} name="hero-exclamation-circle" class="size-5 shrink-0" />
-        <div>
-          <p :if={@title} class="font-semibold">{@title}</p>
-          <p>{msg}</p>
-        </div>
-        <div class="flex-1" />
-        <button type="button" class="group self-start cursor-pointer" aria-label="close">
-          <.icon name="hero-x-mark" class="size-5 opacity-40 group-hover:opacity-70" />
-        </button>
+      <.icon :if={@kind == :info} name="hero-information-circle" class="size-5 shrink-0" />
+      <.icon :if={@kind == :error} name="hero-exclamation-circle" class="size-5 shrink-0" />
+      <div>
+        <p :if={@title} class="font-semibold">{@title}</p>
+        <p>{msg}</p>
       </div>
+      <div class="flex-1" />
+      <button type="button" class="group self-start cursor-pointer" aria-label="close">
+        <.icon name="hero-x-mark" class="size-5 opacity-40 group-hover:opacity-70" />
+      </button>
     </div>
     """
   end
@@ -363,9 +371,15 @@ defmodule JobyKit.CoreComponents do
   Renders the standard flash group: `:info` and `:error` flashes plus
   the disconnected/server-error toasts wired to `phx-disconnected` /
   `phx-connected`. Hosts call this from their root layout.
+
+  This is the single `toast` container for the page — every notice
+  stacks inside it. The container is click-through
+  (`pointer-events-none`) so the empty corner never intercepts clicks;
+  each notice re-enables pointer events for its own dismiss handler.
   """
   attr :id, :string, default: "flash-group"
   attr :flash, :map, required: true
+  attr :class, :any, default: nil
   attr :rest, :global
 
   def flash_group(assigns) do
@@ -374,6 +388,7 @@ defmodule JobyKit.CoreComponents do
       id={@id}
       data-component="JobyKit.CoreComponents.flash_group"
       aria-live="polite"
+      class={["toast toast-top toast-end z-50 pointer-events-none", @class]}
       {@rest}
     >
       <.flash kind={:info} flash={@flash} />
@@ -611,10 +626,19 @@ defmodule JobyKit.CoreComponents do
   Translate an Ecto error tuple `{msg, opts}` into a plain string by
   interpolating `%{key}` placeholders. No Gettext dependency — hosts
   that need i18n should override this function (or wrap `<.input>`).
+
+  Opts whose placeholder isn't present in the message are never
+  stringified, so non-`String.Chars` values (`type: {:array, :string}`,
+  `validation: :cast`, and friends — which Ecto attaches to every cast
+  error) pass through harmlessly.
   """
   def translate_error({msg, opts}) when is_binary(msg) and is_list(opts) do
     Enum.reduce(opts, msg, fn {key, value}, acc ->
-      String.replace(acc, "%{#{key}}", to_string(value))
+      # The function form is deliberate: it defers `to_string/1` until a
+      # placeholder actually matches. Calling it eagerly raises
+      # `Protocol.UndefinedError` on the tuple/list opts Ecto attaches to
+      # array and composite-typed fields, 500ing the whole form.
+      String.replace(acc, "%{#{key}}", fn _ -> to_string(value) end)
     end)
   end
 

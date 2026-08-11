@@ -1,5 +1,64 @@
 # Changelog
 
+## v0.2.3
+
+Fixes a crash that takes down any form with an array-typed field, plus
+two `CoreComponents` corrections and the missing half of the shipped
+manifest.
+
+* **`translate_error/1`: no longer raises on non-`String.Chars` error
+  opts.** It stringified every opt eagerly instead of deferring to
+  `String.replace/4`'s function form, so the opts Ecto attaches to a
+  cast error on an `{:array, _}` field —
+  `[type: {:array, :string}, validation: :cast]` — raised
+  `Protocol.UndefinedError` on the tuple. Every `<.input field={...}>`
+  routes errors through this, so the first invalid submit on any form
+  with an array or composite-typed field returned a 500. Same class of
+  crash for `validate_subset`/`validate_inclusion` opts carrying atom
+  lists. If you worked around this by overriding `translate_error/1`,
+  you can drop the override.
+* **`button/1`: `type` now passes through.** It was neither a declared
+  attr nor in the `:global` include list, so `<.button type="button">`
+  emitted an "undefined attribute" warning and the attribute was
+  dropped — every button inside a form submitted it, with no way to opt
+  out. Omitting `type` still leaves the attribute off, so existing
+  submit buttons are unaffected. `form` passes through too.
+* **`flash/1` + `flash_group/1`: one toast container per page instead
+  of one per notice.** Each `flash/1` rendered its own fixed-position
+  `toast toast-top toast-end` container, so simultaneous notices — an
+  `:info` and an `:error` from the same action, or a flash plus a
+  disconnect toast — stacked at the identical fixed position and
+  occluded each other. The `toast` container now lives on
+  `flash_group/1` and every notice stacks inside it.
+  **Behavior change:** `flash/1` rendered on its own is now an inline
+  `alert` and no longer positions itself. If you call `flash/1` outside
+  `flash_group/1` and relied on it floating, wrap it in your own
+  positioned container. Calling `flash_group/1` from your root layout —
+  the documented path — needs no change.
+  The container is `pointer-events-none` (notices re-enable it), so the
+  now-always-present fixed element can't intercept clicks in an empty
+  corner. `:info` notices are `role="status"` rather than the
+  interrupting `role="alert"`; errors stay assertive. Both components
+  now declare `attr :class`, so a caller class merges into the root
+  instead of colliding with the identity classes.
+* **The install manifest registers all nine shipped wrappers.** It
+  listed only `button`, `card`, `icon`, `input`, and `flash`, while the
+  kit also ships `header`, `list`, `table`, and `flash_group` — shipped,
+  documented, and invisible on `/design` and in `/design.json`, so
+  agents following the build order re-wrapped or hand-rolled them.
+  `daisy_overrides/0` likewise now reports every primitive the kit
+  actually wraps (alert, toast, list, table, and the four input types)
+  instead of just button and card. Existing apps: re-run
+  `mix joby_kit.install --force` to pick up the new registrations, or
+  copy the entries into your `DesignManifest` by hand.
+  (`flash_group` is registered without a preview on purpose — it's a
+  fixed-position container, so an inline preview would float over the
+  design page rather than sit in its card.)
+
+Note for hosts that **forked** a core component (`import
+JobyKit.CoreComponents, except: [...]`): the `button/1` and `flash/1`
+fixes above land in the kit's copy, not yours. Apply them to your fork.
+
 ## v0.2.2
 
 Docs-only release. No functional change — skip it if 0.2.1 is working

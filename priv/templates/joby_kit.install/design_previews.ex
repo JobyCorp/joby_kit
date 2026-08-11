@@ -92,6 +92,46 @@ defmodule <%= @web_module %>.DesignPreviews do
     """
   end
 
+  def header_preview(assigns) do
+    ~H"""
+    <CoreComponents.header>
+      Team settings
+      <:subtitle>Manage members and their permissions.</:subtitle>
+      <:actions>
+        <CoreComponents.button variant="primary">Invite</CoreComponents.button>
+      </:actions>
+    </CoreComponents.header>
+    """
+  end
+
+  def list_preview(assigns) do
+    ~H"""
+    <CoreComponents.list>
+      <:item title="Status">Active</:item>
+      <:item title="Plan">Team</:item>
+      <:item title="Seats">12 of 20 used</:item>
+    </CoreComponents.list>
+    """
+  end
+
+  def table_preview(assigns) do
+    assigns =
+      Map.put(assigns, :rows, [
+        %{id: 1, name: "Ada Lovelace", role: "Owner"},
+        %{id: 2, name: "Alan Turing", role: "Member"}
+      ])
+
+    ~H"""
+    <CoreComponents.table id="preview-table" rows={@rows}>
+      <:col :let={row} label="Name">{row.name}</:col>
+      <:col :let={row} label="Role">{row.role}</:col>
+      <:action :let={row}>
+        <CoreComponents.button size="sm">Edit {row.id}</CoreComponents.button>
+      </:action>
+    </CoreComponents.table>
+    """
+  end
+
   def empty_state_preview(assigns) do
     ~H"""
     <div class="grid gap-4 sm:grid-cols-2">
