@@ -41,32 +41,70 @@ defmodule JobyKit.DaisyCatalogue do
       components: [
         %{id: :button, name: "Button", classes: "btn", default_status: :available},
         %{id: :dropdown, name: "Dropdown", classes: "dropdown", default_status: :available},
-        %{id: :fab, name: "FAB / Speed Dial", docs_slug: "fab", classes: "fab", default_status: :reference, note: "Mobile floating action."},
+        %{
+          id: :fab,
+          name: "FAB / Speed Dial",
+          docs_slug: "fab",
+          classes: "fab",
+          default_status: :reference,
+          note: "Mobile floating action."
+        },
         %{id: :modal, name: "Modal", classes: "modal", default_status: :available},
         %{id: :swap, name: "Swap", classes: "swap", default_status: :available},
-        %{id: :theme_controller, name: "Theme Controller", classes: "theme-controller", default_status: :available}
+        %{
+          id: :theme_controller,
+          name: "Theme Controller",
+          classes: "theme-controller",
+          default_status: :available
+        }
       ]
     },
     %{
       name: "Data display",
       description: "Cards, badges, tables, lists, and read-only surfaces.",
       components: [
-        %{id: :accordion, name: "Accordion", classes: "collapse + radio", default_status: :available, note: "Compose collapse with radio inputs for one-open behavior."},
+        %{
+          id: :accordion,
+          name: "Accordion",
+          classes: "collapse + radio",
+          default_status: :available,
+          note: "Compose collapse with radio inputs for one-open behavior."
+        },
         %{id: :avatar, name: "Avatar", classes: "avatar", default_status: :available},
         %{id: :badge, name: "Badge", classes: "badge", default_status: :available},
         %{id: :card, name: "Card", classes: "card", default_status: :available},
         %{id: :carousel, name: "Carousel", classes: "carousel", default_status: :reference},
-        %{id: :chat_bubble, name: "Chat bubble", docs_slug: "chat", classes: "chat / chat-bubble", default_status: :available},
+        %{
+          id: :chat_bubble,
+          name: "Chat bubble",
+          docs_slug: "chat",
+          classes: "chat / chat-bubble",
+          default_status: :available
+        },
         %{id: :collapse, name: "Collapse", classes: "collapse", default_status: :available},
         %{id: :countdown, name: "Countdown", classes: "countdown", default_status: :reference},
         %{id: :diff, name: "Diff", classes: "diff", default_status: :reference},
-        %{id: :hover_gallery, name: "Hover Gallery", classes: "hover-gallery", default_status: :reference, since: "5.1", note: "Requires daisyUI 5.1+."},
+        %{
+          id: :hover_gallery,
+          name: "Hover Gallery",
+          classes: "hover-gallery",
+          default_status: :reference,
+          since: "5.1",
+          note: "Requires daisyUI 5.1+."
+        },
         %{id: :kbd, name: "Kbd", classes: "kbd", default_status: :available},
         %{id: :list, name: "List", classes: "list", default_status: :available},
         %{id: :stat, name: "Stat", classes: "stats / stat", default_status: :available},
         %{id: :status, name: "Status", classes: "status", default_status: :available},
         %{id: :table, name: "Table", classes: "table", default_status: :available},
-        %{id: :text_rotate, name: "Text Rotate", classes: "text-rotate", default_status: :reference, since: "5.5", note: "Requires daisyUI 5.5+."},
+        %{
+          id: :text_rotate,
+          name: "Text Rotate",
+          classes: "text-rotate",
+          default_status: :reference,
+          since: "5.5",
+          note: "Requires daisyUI 5.5+."
+        },
         %{id: :timeline, name: "Timeline", classes: "timeline", default_status: :available}
       ]
     },
@@ -74,13 +112,38 @@ defmodule JobyKit.DaisyCatalogue do
       name: "Navigation",
       description: "Wayfinding, tabs, breadcrumbs, and pagination.",
       components: [
-        %{id: :breadcrumbs, name: "Breadcrumbs", classes: "breadcrumbs", default_status: :available},
-        %{id: :dock, name: "Dock", classes: "dock", default_status: :reference, note: "Mobile-style bottom dock."},
+        %{
+          id: :breadcrumbs,
+          name: "Breadcrumbs",
+          classes: "breadcrumbs",
+          default_status: :available
+        },
+        %{
+          id: :dock,
+          name: "Dock",
+          classes: "dock",
+          default_status: :reference,
+          note: "Mobile-style bottom dock."
+        },
         %{id: :link, name: "Link", classes: "link", default_status: :available},
-        %{id: :mega_menu, name: "Mega Menu", docs_slug: "megamenu", classes: "megamenu", default_status: :reference, since: "5.6", note: "Requires daisyUI 5.6+."},
+        %{
+          id: :mega_menu,
+          name: "Mega Menu",
+          docs_slug: "megamenu",
+          classes: "megamenu",
+          default_status: :reference,
+          since: "5.6",
+          note: "Requires daisyUI 5.6+."
+        },
         %{id: :menu, name: "Menu", classes: "menu", default_status: :available},
         %{id: :navbar, name: "Navbar", classes: "navbar", default_status: :available},
-        %{id: :pagination, name: "Pagination", classes: "join + buttons", default_status: :available, note: "Compose join with buttons for paged controls."},
+        %{
+          id: :pagination,
+          name: "Pagination",
+          classes: "join + buttons",
+          default_status: :available,
+          note: "Compose join with buttons for paged controls."
+        },
         %{id: :steps, name: "Steps", classes: "steps", default_status: :available},
         %{id: :tab, name: "Tab", classes: "tabs / tab", default_status: :available}
       ]
@@ -92,7 +155,12 @@ defmodule JobyKit.DaisyCatalogue do
         %{id: :alert, name: "Alert", classes: "alert", default_status: :available},
         %{id: :loading, name: "Loading", classes: "loading", default_status: :available},
         %{id: :progress, name: "Progress", classes: "progress", default_status: :available},
-        %{id: :radial_progress, name: "Radial progress", classes: "radial-progress", default_status: :available},
+        %{
+          id: :radial_progress,
+          name: "Radial progress",
+          classes: "radial-progress",
+          default_status: :available
+        },
         %{id: :skeleton, name: "Skeleton", classes: "skeleton", default_status: :available},
         %{id: :toast, name: "Toast", classes: "toast", default_status: :available},
         %{id: :tooltip, name: "Tooltip", classes: "tooltip", default_status: :available}
@@ -102,18 +170,36 @@ defmodule JobyKit.DaisyCatalogue do
       name: "Data input",
       description: "Form controls. Use a wrapped form input before reaching for raw classes.",
       components: [
-        %{id: :calendar, name: "Calendar", classes: "calendar (cally / pikaday)", default_status: :reference},
+        %{
+          id: :calendar,
+          name: "Calendar",
+          classes: "calendar (cally / pikaday)",
+          default_status: :reference
+        },
         %{id: :checkbox, name: "Checkbox", classes: "checkbox", default_status: :available},
         %{id: :fieldset, name: "Fieldset", classes: "fieldset", default_status: :available},
         %{id: :file_input, name: "File Input", classes: "file-input", default_status: :available},
         %{id: :filter, name: "Filter", classes: "filter", default_status: :available},
         %{id: :label, name: "Label", classes: "label", default_status: :available},
-        %{id: :otp, name: "OTP", classes: "otp", default_status: :available, since: "5.6", note: "One-time-password input. Requires daisyUI 5.6+."},
+        %{
+          id: :otp,
+          name: "OTP",
+          classes: "otp",
+          default_status: :available,
+          since: "5.6",
+          note: "One-time-password input. Requires daisyUI 5.6+."
+        },
         %{id: :radio, name: "Radio", classes: "radio", default_status: :available},
         %{id: :range, name: "Range", classes: "range", default_status: :available},
         %{id: :rating, name: "Rating", classes: "rating", default_status: :reference},
         %{id: :select, name: "Select", classes: "select", default_status: :available},
-        %{id: :text_input, name: "Text Input", docs_slug: "input", classes: "input", default_status: :available},
+        %{
+          id: :text_input,
+          name: "Text Input",
+          docs_slug: "input",
+          classes: "input",
+          default_status: :available
+        },
         %{id: :textarea, name: "Textarea", classes: "textarea", default_status: :available},
         %{id: :toggle, name: "Toggle", classes: "toggle", default_status: :available},
         %{id: :validator, name: "Validator", classes: "validator", default_status: :available}
@@ -124,25 +210,94 @@ defmodule JobyKit.DaisyCatalogue do
       description: "Page-level chrome, dividers, sidebars, and grouping.",
       components: [
         %{id: :divider, name: "Divider", classes: "divider", default_status: :available},
-        %{id: :aura, name: "Aura", classes: "aura", default_status: :reference, since: "5.6", note: "Decorative glow. Requires daisyUI 5.6+."},
-        %{id: :drawer, name: "Drawer sidebar", docs_slug: "drawer", classes: "drawer", default_status: :reference, note: "Often replaced by custom layouts."},
+        %{
+          id: :aura,
+          name: "Aura",
+          classes: "aura",
+          default_status: :reference,
+          since: "5.6",
+          note: "Decorative glow. Requires daisyUI 5.6+."
+        },
+        %{
+          id: :drawer,
+          name: "Drawer sidebar",
+          docs_slug: "drawer",
+          classes: "drawer",
+          default_status: :reference,
+          note: "Often replaced by custom layouts."
+        },
         %{id: :footer, name: "Footer", classes: "footer", default_status: :reference},
-        %{id: :hero, name: "Hero", classes: "hero", default_status: :reference, note: "Marketing-style; product surfaces typically use card."},
-        %{id: :hover_3d, name: "Hover 3D", classes: "hover-3d", default_status: :reference, since: "5.5", note: "Decorative tilt. Requires daisyUI 5.5+."},
+        %{
+          id: :hero,
+          name: "Hero",
+          classes: "hero",
+          default_status: :reference,
+          note: "Marketing-style; product surfaces typically use card."
+        },
+        %{
+          id: :hover_3d,
+          name: "Hover 3D",
+          classes: "hover-3d",
+          default_status: :reference,
+          since: "5.5",
+          note: "Decorative tilt. Requires daisyUI 5.5+."
+        },
         %{id: :indicator, name: "Indicator", classes: "indicator", default_status: :available},
-        %{id: :join, name: "Join", classes: "join", default_status: :available, note: "Group buttons or inputs for segmented controls."},
-        %{id: :mask, name: "Mask", classes: "mask", default_status: :reference, note: "Decorative shape masks."},
-        %{id: :stack, name: "Stack", classes: "stack", default_status: :reference, note: "Use Tailwind grid/flex instead."}
+        %{
+          id: :join,
+          name: "Join",
+          classes: "join",
+          default_status: :available,
+          note: "Group buttons or inputs for segmented controls."
+        },
+        %{
+          id: :mask,
+          name: "Mask",
+          classes: "mask",
+          default_status: :reference,
+          note: "Decorative shape masks."
+        },
+        %{
+          id: :stack,
+          name: "Stack",
+          classes: "stack",
+          default_status: :reference,
+          note: "Use Tailwind grid/flex instead."
+        }
       ]
     },
     %{
       name: "Mockup",
       description: "Decorative containers; useful for product screenshots and demos.",
       components: [
-        %{id: :browser_mockup, name: "Browser mockup", docs_slug: "mockup-browser", classes: "mockup-browser", default_status: :reference},
-        %{id: :code_mockup, name: "Code mockup", docs_slug: "mockup-code", classes: "mockup-code", default_status: :reference},
-        %{id: :phone_mockup, name: "Phone mockup", docs_slug: "mockup-phone", classes: "mockup-phone", default_status: :reference},
-        %{id: :window_mockup, name: "Window mockup", docs_slug: "mockup-window", classes: "mockup-window", default_status: :reference}
+        %{
+          id: :browser_mockup,
+          name: "Browser mockup",
+          docs_slug: "mockup-browser",
+          classes: "mockup-browser",
+          default_status: :reference
+        },
+        %{
+          id: :code_mockup,
+          name: "Code mockup",
+          docs_slug: "mockup-code",
+          classes: "mockup-code",
+          default_status: :reference
+        },
+        %{
+          id: :phone_mockup,
+          name: "Phone mockup",
+          docs_slug: "mockup-phone",
+          classes: "mockup-phone",
+          default_status: :reference
+        },
+        %{
+          id: :window_mockup,
+          name: "Window mockup",
+          docs_slug: "mockup-window",
+          classes: "mockup-window",
+          default_status: :reference
+        }
       ]
     }
   ]

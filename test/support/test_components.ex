@@ -50,25 +50,29 @@ defmodule JobyKit.Test.Manifest do
 
   alias JobyKit.Test.{Components, DesignPreviews}
 
-  category :core,
+  category(:core,
     label: "Core wrappers",
     description: "Pure daisy wrappers."
+  )
 
-  category :composite,
+  category(:composite,
     label: "Composites",
     description: "Multi-primitive patterns."
+  )
 
-  component Components, :button,
+  component(Components, :button,
     category: :core,
     daisy_basis: "btn",
     summary: "A button.",
     preview: &DesignPreviews.button_preview/1
+  )
 
-  component Components, :badge,
+  component(Components, :badge,
     category: :core,
     daisy_basis: "badge",
     summary: "A badge.",
     preview: &DesignPreviews.badge_preview/1
+  )
 
   def daisy_overrides do
     %{

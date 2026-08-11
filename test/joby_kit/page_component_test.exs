@@ -50,12 +50,12 @@ defmodule JobyKit.PageComponentTest do
 
       alias JobyKit.Test.Components
 
-      category :core, label: "Core", description: ""
-      category :composite, label: "Composites", description: ""
-      category :domain, label: "Domain", description: ""
+      category(:core, label: "Core", description: "")
+      category(:composite, label: "Composites", description: "")
+      category(:domain, label: "Domain", description: "")
 
-      component Components, :button, category: :core, summary: "core entry"
-      component Components, :badge, category: :composite, summary: "composite entry"
+      component(Components, :button, category: :core, summary: "core entry")
+      component(Components, :badge, category: :composite, summary: "composite entry")
     end
 
     html =

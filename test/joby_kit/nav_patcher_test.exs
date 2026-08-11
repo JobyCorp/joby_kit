@@ -157,22 +157,24 @@ defmodule JobyKit.NavPatcherTest do
       assert contents =~ "    <%!-- jobykit:nav-end --%>"
     end
   end
+
   describe "nav scoping" do
     test "does not adopt a list from outside the nav element" do
       # The </ul> search used to run to end-of-file, so a header with no
       # list of its own happily injected the kit links into whatever list
       # came next — a footer, a sidebar — and still reported :patched.
-      path = tmp_file("""
-      <header class="navbar">
-        <div class="flex-none">Brand</div>
-      </header>
-      <main>{@inner_content}</main>
-      <footer>
-        <ul>
-          <li><a href="/privacy">Privacy</a></li>
-        </ul>
-      </footer>
-      """)
+      path =
+        tmp_file("""
+        <header class="navbar">
+          <div class="flex-none">Brand</div>
+        </header>
+        <main>{@inner_content}</main>
+        <footer>
+          <ul>
+            <li><a href="/privacy">Privacy</a></li>
+          </ul>
+        </footer>
+        """)
 
       assert :no_nav_found == JobyKit.NavPatcher.patch(path)
 
@@ -183,16 +185,17 @@ defmodule JobyKit.NavPatcherTest do
     end
 
     test "still patches a list that is inside the nav" do
-      path = tmp_file("""
-      <header class="navbar">
-        <ul>
-          <li><a href="/about">About</a></li>
-        </ul>
-      </header>
-      <footer>
-        <ul><li><a href="/privacy">Privacy</a></li></ul>
-      </footer>
-      """)
+      path =
+        tmp_file("""
+        <header class="navbar">
+          <ul>
+            <li><a href="/about">About</a></li>
+          </ul>
+        </header>
+        <footer>
+          <ul><li><a href="/privacy">Privacy</a></li></ul>
+        </footer>
+        """)
 
       assert :patched == JobyKit.NavPatcher.patch(path)
 
@@ -216,5 +219,4 @@ defmodule JobyKit.NavPatcherTest do
     on_exit(fn -> File.rm(path) end)
     path
   end
-
 end

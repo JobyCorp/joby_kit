@@ -67,7 +67,9 @@ defmodule JobyKit.CoreComponentsTest do
       assigns = %{}
 
       html =
-        rendered_to_string(~H|<CoreComponents.button type="button">Cancel</CoreComponents.button>|)
+        rendered_to_string(
+          ~H|<CoreComponents.button type="button">Cancel</CoreComponents.button>|
+        )
 
       assert html =~ ~s|type="button"|
     end
@@ -245,7 +247,11 @@ defmodule JobyKit.CoreComponentsTest do
 
     test "width is controlled through the root; the control fills it" do
       assigns = %{}
-      html = rendered_to_string(~H|<CoreComponents.input name="q" value="" type="text" class="w-32" />|)
+
+      html =
+        rendered_to_string(
+          ~H|<CoreComponents.input name="q" value="" type="text" class="w-32" />|
+        )
 
       assert root_class(html) =~ "w-32"
       assert control_class(html) =~ "w-full"
@@ -266,7 +272,12 @@ defmodule JobyKit.CoreComponentsTest do
       refute html =~ ~r/<fieldset[^>]*placeholder/
     end
 
-    for {type, tag} <- [{"text", "input"}, {"select", "select"}, {"textarea", "textarea"}, {"checkbox", "input"}] do
+    for {type, tag} <- [
+          {"text", "input"},
+          {"select", "select"},
+          {"textarea", "textarea"},
+          {"checkbox", "input"}
+        ] do
       test "#{type} associates its errors with the control for screen readers" do
         assigns = %{type: unquote(type), tag: unquote(tag)}
 
@@ -457,9 +468,7 @@ defmodule JobyKit.CoreComponentsTest do
       assigns = %{field: to_form(%{"email" => "ada@example.com"}, as: :user)[:email]}
 
       html =
-        rendered_to_string(
-          ~H|<CoreComponents.input field={@field} type="email" label="Email" />|
-        )
+        rendered_to_string(~H|<CoreComponents.input field={@field} type="email" label="Email" />|)
 
       assert html =~ ~s|id="user_email"|
       assert html =~ ~s|name="user[email]"|
@@ -651,7 +660,11 @@ defmodule JobyKit.CoreComponentsTest do
       classes =
         for v <- ~w(soft primary neutral ghost danger), into: %{} do
           assigns = Map.put(assigns, :v, v)
-          {v, root_class(rendered_to_string(~H|<CoreComponents.button variant={@v}>x</CoreComponents.button>|))}
+
+          {v,
+           root_class(
+             rendered_to_string(~H|<CoreComponents.button variant={@v}>x</CoreComponents.button>|)
+           )}
         end
 
       assert classes["primary"] =~ "btn-primary"
@@ -667,22 +680,38 @@ defmodule JobyKit.CoreComponentsTest do
     test "the default is unchanged, and nameable as soft for computed callers" do
       assigns = %{}
 
-      default = root_class(rendered_to_string(~H|<CoreComponents.button>x</CoreComponents.button>|))
-      soft = root_class(rendered_to_string(~H|<CoreComponents.button variant="soft">x</CoreComponents.button>|))
+      default =
+        root_class(rendered_to_string(~H|<CoreComponents.button>x</CoreComponents.button>|))
+
+      soft =
+        root_class(
+          rendered_to_string(~H|<CoreComponents.button variant="soft">x</CoreComponents.button>|)
+        )
 
       assert default == soft
     end
 
     test "xs joins the size scale" do
       assigns = %{}
-      assert root_class(rendered_to_string(~H|<CoreComponents.button size="xs">x</CoreComponents.button>|)) =~ "btn-xs"
+
+      assert root_class(
+               rendered_to_string(~H|<CoreComponents.button size="xs">x</CoreComponents.button>|)
+             ) =~ "btn-xs"
     end
 
     test "shape gives an icon-only button its square/circle box" do
       assigns = %{}
 
-      circle = root_class(rendered_to_string(~H|<CoreComponents.button shape="circle">x</CoreComponents.button>|))
-      square = root_class(rendered_to_string(~H|<CoreComponents.button shape="square">x</CoreComponents.button>|))
+      circle =
+        root_class(
+          rendered_to_string(~H|<CoreComponents.button shape="circle">x</CoreComponents.button>|)
+        )
+
+      square =
+        root_class(
+          rendered_to_string(~H|<CoreComponents.button shape="square">x</CoreComponents.button>|)
+        )
+
       plain = root_class(rendered_to_string(~H|<CoreComponents.button>x</CoreComponents.button>|))
 
       assert circle =~ "btn-circle"
@@ -705,9 +734,7 @@ defmodule JobyKit.CoreComponentsTest do
       assigns = %{}
 
       html =
-        rendered_to_string(
-          ~H|<CoreComponents.input name="docs" value="" type="file" multiple />|
-        )
+        rendered_to_string(~H|<CoreComponents.input name="docs" value="" type="file" multiple />|)
 
       assert html =~ ~r/<input[^>]*multiple/
     end
@@ -776,7 +803,11 @@ defmodule JobyKit.CoreComponentsTest do
       classes =
         for tone <- ~w(neutral ok warn danger info), into: %{} do
           assigns = Map.put(assigns, :tone, tone)
-          {tone, root_class(rendered_to_string(~H|<CoreComponents.badge tone={@tone}>x</CoreComponents.badge>|))}
+
+          {tone,
+           root_class(
+             rendered_to_string(~H|<CoreComponents.badge tone={@tone}>x</CoreComponents.badge>|)
+           )}
         end
 
       assert classes["ok"] =~ "badge-success"
@@ -791,8 +822,18 @@ defmodule JobyKit.CoreComponentsTest do
 
     test "danger means the same thing on a badge as on a button" do
       assigns = %{}
-      badge = root_class(rendered_to_string(~H|<CoreComponents.badge tone="danger">x</CoreComponents.badge>|))
-      button = root_class(rendered_to_string(~H|<CoreComponents.button variant="danger">x</CoreComponents.button>|))
+
+      badge =
+        root_class(
+          rendered_to_string(~H|<CoreComponents.badge tone="danger">x</CoreComponents.badge>|)
+        )
+
+      button =
+        root_class(
+          rendered_to_string(
+            ~H|<CoreComponents.button variant="danger">x</CoreComponents.button>|
+          )
+        )
 
       assert badge =~ "error"
       assert button =~ "error"
@@ -801,14 +842,24 @@ defmodule JobyKit.CoreComponentsTest do
     test "variant and size are enumerated, not leaked through class" do
       assigns = %{}
 
-      assert root_class(rendered_to_string(~H|<CoreComponents.badge variant="outline">x</CoreComponents.badge>|)) =~
+      assert root_class(
+               rendered_to_string(
+                 ~H|<CoreComponents.badge variant="outline">x</CoreComponents.badge>|
+               )
+             ) =~
                "badge-outline"
 
-      assert root_class(rendered_to_string(~H|<CoreComponents.badge size="lg">x</CoreComponents.badge>|)) =~
+      assert root_class(
+               rendered_to_string(~H|<CoreComponents.badge size="lg">x</CoreComponents.badge>|)
+             ) =~
                "badge-lg"
 
       # solid is the absence of a style modifier
-      refute root_class(rendered_to_string(~H|<CoreComponents.badge variant="solid">x</CoreComponents.badge>|)) =~
+      refute root_class(
+               rendered_to_string(
+                 ~H|<CoreComponents.badge variant="solid">x</CoreComponents.badge>|
+               )
+             ) =~
                "badge-soft"
     end
   end
@@ -1008,7 +1059,11 @@ defmodule JobyKit.CoreComponentsTest do
 
     test "body_class reaches the card-body element" do
       assigns = %{}
-      html = rendered_to_string(~H|<CoreComponents.card body_class="text-base">B</CoreComponents.card>|)
+
+      html =
+        rendered_to_string(
+          ~H|<CoreComponents.card body_class="text-base">B</CoreComponents.card>|
+        )
 
       assert html =~ ~r/class="card-body[^"]*text-base/
     end
@@ -1055,16 +1110,26 @@ defmodule JobyKit.CoreComponentsTest do
       assigns = %{}
 
       assert rendered_to_string(~H|<CoreComponents.header>T</CoreComponents.header>|) =~ "<h1"
-      assert rendered_to_string(~H|<CoreComponents.header level="h2">T</CoreComponents.header>|) =~ "<h2"
-      refute rendered_to_string(~H|<CoreComponents.header level="h2">T</CoreComponents.header>|) =~ "<h1"
+
+      assert rendered_to_string(~H|<CoreComponents.header level="h2">T</CoreComponents.header>|) =~
+               "<h2"
+
+      refute rendered_to_string(~H|<CoreComponents.header level="h2">T</CoreComponents.header>|) =~
+               "<h1"
     end
 
     test "size and title_class control the type scale independently of the tag" do
       assigns = %{}
 
       page = rendered_to_string(~H|<CoreComponents.header size="page">T</CoreComponents.header>|)
-      section = rendered_to_string(~H|<CoreComponents.header size="section">T</CoreComponents.header>|)
-      custom = rendered_to_string(~H|<CoreComponents.header title_class="font-display text-4xl">T</CoreComponents.header>|)
+
+      section =
+        rendered_to_string(~H|<CoreComponents.header size="section">T</CoreComponents.header>|)
+
+      custom =
+        rendered_to_string(
+          ~H|<CoreComponents.header title_class="font-display text-4xl">T</CoreComponents.header>|
+        )
 
       assert page =~ "text-3xl"
       assert section =~ "text-lg"
@@ -1180,7 +1245,10 @@ defmodule JobyKit.CoreComponentsTest do
   # skipping the wrapper. Matches the element carrying the daisy control class.
   defp control_class(html) do
     [_, class] =
-      Regex.run(~r/<(?:input|select|textarea)[^>]*class="([^"]*\b(?:input|select|textarea|checkbox)\b[^"]*)"/, html)
+      Regex.run(
+        ~r/<(?:input|select|textarea)[^>]*class="([^"]*\b(?:input|select|textarea|checkbox)\b[^"]*)"/,
+        html
+      )
 
     class
   end

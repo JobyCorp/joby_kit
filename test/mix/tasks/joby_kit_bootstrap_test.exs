@@ -250,8 +250,11 @@ defmodule Mix.Tasks.JobyKit.BootstrapTest do
       # end up unparseable — and nothing checked.
       for path <- Path.wildcard("lib/demo_app_web/**/*.ex") do
         case path |> File.read!() |> Code.string_to_quoted() do
-          {:ok, _ast} -> :ok
-          {:error, {meta, msg, token}} -> flunk("#{path} does not parse (#{inspect(meta)}): #{msg}#{token}")
+          {:ok, _ast} ->
+            :ok
+
+          {:error, {meta, msg, token}} ->
+            flunk("#{path} does not parse (#{inspect(meta)}): #{msg}#{token}")
         end
       end
     end)

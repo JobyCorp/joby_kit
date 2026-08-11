@@ -40,7 +40,9 @@ defmodule JobyKit.AgentsMdTest do
     assert AgentsMd.patch(path) == :patched
     contents = File.read!(path)
 
-    refute contents =~ "manually write your own tailwind-based components instead of using daisyUI"
+    refute contents =~
+             "manually write your own tailwind-based components instead of using daisyUI"
+
     assert contents =~ "When a primitive UI need matches an existing core wrapper"
     assert contents =~ "reuse and discoverability of existing app components"
     assert contents =~ "some other rule"

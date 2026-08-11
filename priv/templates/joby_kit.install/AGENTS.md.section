@@ -164,4 +164,26 @@ This rule is about the *primitive layer*. Tailwind utilities for
 layout, spacing, motion, gradients, and visual hierarchy on the page
 that *composes* those wrappers are encouraged — see "Composition vs.
 creation" above.
+### When you build a new wrapper: own your box, nothing outside it
+
+The rule the kit follows, and the one your components should:
+
+- **No outer margins on a component root.** Spacing between things
+  belongs to the parent — `space-y-*` or `gap-*`. A component that
+  ships `mb-2` forces every caller to undo it, and callers usually
+  can't: if `class` lands on an inner element, the margin is
+  unreachable and people nudge neighbouring elements instead.
+- **No typography opinions on slot content.** Wrapping a slot in
+  `text-sm text-base-content/70` is right for prose and wrong for a
+  table, a form, or a stat. Make it opt-in (`prose`) or expose a hook
+  (`body_class`).
+- **`class` targets the root**, like every other wrapper. If the inner
+  control also needs styling, give it its own attr (`input_class`).
+- **Variants carry meaning, not colour.** `tone="danger"` survives a
+  theme change; `class="text-red-500"` doesn't.
+
+This isn't style preference. Across three consumer apps, adoption
+tracked it exactly: the components with no spacing or typography
+opinions got hundreds of uses, and the ones with them got bypassed —
+127 hand-rolled panels against 10 uses of `<.card>` in one app.
 <!-- jobykit:end -->

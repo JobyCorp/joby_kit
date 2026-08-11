@@ -31,6 +31,13 @@ defmodule JobyKit.Lint do
     * `:duplicated_class_string` (warning) — the same long `class="..."`
       string appears three or more times, which the kit's own guidance
       names as the signal that markup wants lifting into a wrapper.
+    * `:unmarked_component` (warning) — a public function component
+      renders markup but carries no `data-component` at all, so
+      `:unregistered_wrapper` (which keys off that attribute) cannot see
+      it. The most common way to skip the contract entirely.
+    * `:assign_new_default` (error) — `assign_new(assigns, :x, ...)` on an
+      attr declared with a `default:`. The key is always present, so the
+      fallback is dead code. This shipped once as the flash nil-id bug.
 
   Each violation is a map with `:rule`, `:severity`, `:message`,
   `:file`, `:line`, `:module`, `:function`. The engine is pure data —
@@ -57,6 +64,11 @@ defmodule JobyKit.Lint do
   # any host using a component module named Input/Select/Button.
   @raw_html_primitive_re ~r/<(button|input|textarea|select)\b/
   @allow_raw_html_marker "jobykit:allow-raw-html"
+
+  # Defined here rather than beside heex_bearing?/2 because module
+  # attributes must exist before the first use, and the component scans
+  # below reference it.
+  @sigil_h_re ~r/~H["'\[\(\{<\/\|]/
 
   @doc """
   Run the lint engine. Returns a list of violations in deterministic
@@ -87,14 +99,18 @@ defmodule JobyKit.Lint do
     registered = MapSet.new(healthy_entries, & &1.data_component)
     unregistered_violations = scan_unregistered_wrappers(paths, registered)
     raw_html_violations = scan_raw_html_primitives(paths)
+    unmarked_violations = scan_unmarked_components(paths, registered)
     forked_violations = scan_forked_wrappers(paths)
     duplicated_class_violations = scan_duplicated_class_strings(paths)
+    assign_new_violations = scan_assign_new_defaults(paths)
 
     drift_violations ++
       data_component_violations ++
       rest_global_violations ++
       unregistered_violations ++
-      raw_html_violations ++ forked_violations ++ duplicated_class_violations
+      unmarked_violations ++
+      raw_html_violations ++
+      forked_violations ++ duplicated_class_violations ++ assign_new_violations
   end
 
   # -------------------------------------------------------- manifest_drift
@@ -142,12 +158,15 @@ defmodule JobyKit.Lint do
   defp check_data_component(entry) do
     case read_source(entry) do
       {:ok, raw} ->
-        # A docstring that mentions the attribute does not satisfy the
-        # contract, so strip docs before looking for the real thing.
-        source = blank_doc_heredocs(raw)
+        # Scoped to this component's own `def`. A docstring that mentions
+        # the attribute does not satisfy the contract, and neither does a
+        # *sibling* component's marker — checking the whole file let one
+        # compliant wrapper vouch for every other function in it.
+        source = raw |> blank_doc_heredocs() |> component_body(entry.function)
 
         if String.contains?(source, ~s|data-component="#{entry.data_component}"|) or
-             String.contains?(source, ~s|data-component='#{entry.data_component}'|) do
+             String.contains?(source, ~s|data-component='#{entry.data_component}'|) or
+             dynamic_data_component?(source) do
           []
         else
           [
@@ -395,6 +414,223 @@ defmodule JobyKit.Lint do
     }
   end
 
+  # A wrapper may build the attribute rather than hardcode it —
+  # `data-component={@dc}` or `data-component={"\#{inspect(__MODULE__)}.thing"}`.
+  # Treating that as missing was a false positive that told a compliant
+  # wrapper it was broken.
+  @dynamic_data_component_re ~r/data-component=\{/
+  defp dynamic_data_component?(source), do: Regex.match?(@dynamic_data_component_re, source)
+
+  # The slice of `source` belonging to `function`'s definition: from its
+  # `def` line to the next top-level `def`, or end of file. Falls back to
+  # the whole source when the definition can't be located (a generated or
+  # macro-defined component), which keeps the check permissive rather
+  # than reporting a false error.
+  defp component_body(source, function) do
+    lines = String.split(source, "\n")
+
+    starts =
+      lines
+      |> Enum.with_index()
+      |> Enum.filter(fn {line, _} -> Regex.match?(~r/^\s*defp?\s+[a-z_]/, line) end)
+      |> Enum.map(fn {_, idx} -> idx end)
+
+    # Every clause, not just the first. `input/1` has six — the
+    # FormField clause only delegates, so slicing to the next `def`
+    # looked at a body with no marker in it and reported the kit's own
+    # most-used component as non-compliant.
+    own =
+      Enum.filter(starts, fn idx ->
+        Regex.match?(
+          ~r/^\s*defp?\s+#{Regex.escape(to_string(function))}\s*[\(\s]/,
+          Enum.at(lines, idx)
+        )
+      end)
+
+    case own do
+      [] ->
+        source
+
+      clause_starts ->
+        clause_starts
+        |> Enum.map_join("\n", fn idx ->
+          stop = Enum.find(starts, length(lines), &(&1 > idx))
+          lines |> Enum.slice(idx..(stop - 1)//1) |> Enum.join("\n")
+        end)
+    end
+  end
+
+  # -------------------------------------------------- unmarked_component
+
+  # `:unregistered_wrapper` only fires on functions that already carry
+  # `data-component`, which makes it circular: a component is flagged for
+  # being unregistered only once it has done half the registration. A
+  # public function component with markup and no marker at all — the most
+  # common way to skip the contract — was invisible to it.
+  @component_def_re ~r/^\s{0,4}def\s+([a-z_][a-zA-Z0-9_]*)\s*\(\s*assigns/m
+
+  defp scan_unmarked_components(patterns, registered) do
+    patterns
+    |> Enum.flat_map(&Path.wildcard/1)
+    |> Enum.uniq()
+    |> Enum.flat_map(&scan_file_for_unmarked(&1, registered))
+    |> Enum.sort_by(&{&1.file, &1.line})
+  end
+
+  defp scan_file_for_unmarked(path, registered) do
+    with {:ok, raw} <- File.read(path),
+         true <- heex_bearing?(path, raw) do
+      contents = raw |> blank_doc_heredocs() |> blank_comments()
+      lines = String.split(contents, "\n")
+      line_index = build_line_index(contents)
+      modules = module_positions(contents)
+      wrapper_ranges = wrapper_line_ranges(path, raw)
+
+      @component_def_re
+      |> Regex.scan(contents, return: :index)
+      |> Enum.flat_map(fn [_full, {name_start, name_len}] ->
+        name = binary_part(contents, name_start, name_len)
+        # Line is taken from the function name, not the match start: a
+        # match anchored at column 0 lands exactly on a line boundary and
+        # line_for_offset/2 attributes it to the line above.
+        line = line_for_offset(line_index, name_start)
+        module = enclosing_module(modules, name_start)
+
+        cond do
+          # Already carries a marker — :unregistered_wrapper's job.
+          exempt?(wrapper_ranges, line) -> []
+          # No module we can name, or already registered under it.
+          module == nil -> []
+          MapSet.member?(registered, "#{module}.#{name}") -> []
+          # Not a component by convention (see component_by_convention?/2).
+          not component_by_convention?(module, name) -> []
+          # Only flag defs that actually render markup.
+          not renders_markup?(lines, line) -> []
+          true -> [unmarked_violation(module, name, path, line)]
+        end
+      end)
+    else
+      _ -> []
+    end
+  end
+
+  # Three kinds of public `def x(assigns)` render markup without being
+  # components, and every one of them is named by convention rather than
+  # guessed at. Without these the rule fires on every LiveView and every
+  # previews module in a clean generated app — eighteen findings on the
+  # kit's own dev shell, which is how they were found.
+  #
+  #   * `render/1` is the LiveView/LiveComponent callback.
+  #   * `*_preview/1` is the manifest's preview harness; the previews
+  #     module documents the suffix as its naming rule.
+  #   * `<App>Web.Layouts` holds page chrome, not registered components.
+  defp component_by_convention?(module, name) do
+    not (name == "render" or
+           String.ends_with?(name, "_preview") or
+           String.ends_with?(module, ".Layouts"))
+  end
+
+  # Look ahead a little way for a `~H` sigil belonging to this def.
+  defp renders_markup?(lines, line) do
+    lines
+    |> Enum.slice((line - 1)..(line + 12)//1)
+    |> Enum.any?(&Regex.match?(@sigil_h_re, &1))
+  end
+
+  # A file can hold several modules — the kit's own lint fixtures do — so
+  # attribute each def to the last `defmodule` that opened before it
+  # rather than to the first one in the file.
+  defp module_positions(contents) do
+    ~r/^defmodule\s+([A-Z][\w.]*)/m
+    |> Regex.scan(contents, return: :index)
+    |> Enum.map(fn [{start, _}, {name_start, name_len}] ->
+      {start, binary_part(contents, name_start, name_len)}
+    end)
+  end
+
+  defp enclosing_module(modules, offset) do
+    modules
+    |> Enum.take_while(fn {start, _} -> start < offset end)
+    |> List.last()
+    |> case do
+      {_start, module} -> module
+      nil -> nil
+    end
+  end
+
+  defp unmarked_violation(module, name, path, line) do
+    %{
+      rule: :unmarked_component,
+      severity: :warning,
+      message:
+        "#{module}.#{name} renders markup but carries no data-component and is not registered — " <>
+          "it is invisible to /design.json and to agents. Add the marker and a manifest entry, " <>
+          "or move it out of the component layer.",
+      file: path,
+      line: line,
+      module: nil,
+      function: String.to_atom(name)
+    }
+  end
+
+  # --------------------------------------------------------- assign_new_default
+
+  # `attr :x, default: nil` puts :x in assigns, so `assign_new(assigns, :x, ...)`
+  # never fires and the default silently wins. That is exactly the bug that
+  # shipped as the flash nil-id defect in 0.2.0: every toast rendered without
+  # an id and the dismiss handler became JS.hide(to: "#").
+  @assign_new_re ~r/assign_new\(\s*assigns\s*,\s*:([a-z_][a-zA-Z0-9_]*)/
+
+  defp scan_assign_new_defaults(patterns) do
+    patterns
+    |> Enum.flat_map(&Path.wildcard/1)
+    |> Enum.uniq()
+    |> Enum.flat_map(&scan_file_for_assign_new/1)
+    |> Enum.sort_by(&{&1.file, &1.line})
+  end
+
+  defp scan_file_for_assign_new(path) do
+    case File.read(path) do
+      {:ok, raw} ->
+        contents = raw |> blank_doc_heredocs() |> blank_comments()
+        line_index = build_line_index(contents)
+
+        @assign_new_re
+        |> Regex.scan(contents, return: :index)
+        |> Enum.flat_map(fn [{start, _}, {name_start, name_len}] ->
+          name = binary_part(contents, name_start, name_len)
+
+          if attr_has_default?(contents, name) do
+            [assign_new_violation(name, path, line_for_offset(line_index, start))]
+          else
+            []
+          end
+        end)
+
+      {:error, _} ->
+        []
+    end
+  end
+
+  defp attr_has_default?(contents, name) do
+    Regex.match?(~r/attr\s+:#{Regex.escape(name)}\s*,[^\n]*\bdefault:/, contents)
+  end
+
+  defp assign_new_violation(name, path, line) do
+    %{
+      rule: :assign_new_default,
+      severity: :error,
+      message:
+        "assign_new(assigns, :#{name}, ...) never runs — `attr :#{name}` declares a `default:`, " <>
+          "so the key is always present in assigns and the fallback is dead code. " <>
+          "Use `assigns.#{name} || fallback` instead.",
+      file: path,
+      line: line,
+      module: nil,
+      function: nil
+    }
+  end
+
   # ----------------------------------------------------- raw_html_primitive
 
   defp scan_raw_html_primitives(patterns) do
@@ -424,7 +660,6 @@ defmodule JobyKit.Lint do
   # have no templates to lint. The sigil regex requires a delimiter
   # character immediately after `~H` so a comment that *mentions* `~H`
   # in prose doesn't flip a file into scannable mode.
-  @sigil_h_re ~r/~H["'\[\(\{<\/\|]/
   defp heex_bearing?(path, contents) do
     Path.extname(path) == ".heex" or Regex.match?(@sigil_h_re, contents)
   end
@@ -522,7 +757,9 @@ defmodule JobyKit.Lint do
   end
 
   defp exempt?(:all, _line_no), do: true
-  defp exempt?(ranges, line_no), do: Enum.any?(ranges, fn {a, b} -> line_no >= a and line_no <= b end)
+
+  defp exempt?(ranges, line_no),
+    do: Enum.any?(ranges, fn {a, b} -> line_no >= a and line_no <= b end)
 
   defp allows_raw_html?(line, lines, line_no) do
     String.contains?(line, @allow_raw_html_marker) or

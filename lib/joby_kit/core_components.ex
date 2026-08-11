@@ -119,9 +119,17 @@ defmodule JobyKit.CoreComponents do
     include: ~w(href navigate patch method download name value disabled type form)
 
   attr :class, :any, default: nil
-  attr :variant, :string, values: ~w(soft primary neutral ghost danger)
-  attr :size, :string, values: ~w(xs sm md lg), default: "md"
-  attr :shape, :string, values: ~w(circle square)
+
+  attr :variant, :string,
+    values: ~w(soft primary neutral ghost danger),
+    doc: "Tone. Defaults to the soft-primary treatment; `danger` for destructive actions."
+
+  attr :size, :string, values: ~w(xs sm md lg), default: "md", doc: "Control height."
+
+  attr :shape, :string,
+    values: ~w(circle square),
+    doc: "Square off an icon-only button. Give it an aria-label."
+
   slot :inner_block, required: true
 
   def button(%{rest: rest} = assigns) do
@@ -226,7 +234,11 @@ defmodule JobyKit.CoreComponents do
   into a second file — the exact drift the kit's own guidance warns
   about.
   """
-  attr :tone, :string, values: ~w(neutral ok warn danger info), default: "neutral"
+  attr :tone, :string,
+    values: ~w(neutral ok warn danger info),
+    default: "neutral",
+    doc: "The state being reported, not a colour."
+
   attr :variant, :string, values: ~w(soft solid outline), default: "soft"
   attr :size, :string, values: ~w(xs sm md lg), default: "sm"
   attr :class, :any, default: nil
@@ -279,7 +291,11 @@ defmodule JobyKit.CoreComponents do
   """
   attr :class, :any, default: nil
   attr :body_class, :any, default: nil, doc: "Utilities for the card-body element."
-  attr :variant, :string, values: ~w(bordered ghost elevated), default: "bordered"
+
+  attr :variant, :string,
+    values: ~w(bordered ghost elevated),
+    default: "bordered",
+    doc: "Surface treatment."
 
   attr :prose, :boolean,
     default: false,
@@ -453,7 +469,13 @@ defmodule JobyKit.CoreComponents do
   action cell carries `data-table-actions` so a host override can target
   it precisely instead of guessing with `:last-child`.
   """
-  attr :id, :string, required: true
+  attr :id, :string,
+    required: true,
+    doc: "Identifies the row container. Streams require it; it lands on `<tbody>`."
+
+  attr :table_id, :string,
+    default: nil,
+    doc: "Optional id for the `<table>` element itself, since `id` is taken."
 
   attr :rows, :any,
     required: true,
@@ -462,7 +484,7 @@ defmodule JobyKit.CoreComponents do
         "(which enumerates as `{dom_id, item}`)."
 
   attr :class, :any, default: nil
-  attr :zebra, :boolean, default: true
+  attr :zebra, :boolean, default: true, doc: "Row striping. Turn off for dense data."
   attr :size, :string, values: ~w(xs sm md lg), default: "md"
   attr :row_id, :any, default: nil
   attr :row_click, :any, default: nil
@@ -491,6 +513,7 @@ defmodule JobyKit.CoreComponents do
 
     ~H"""
     <table
+      id={@table_id}
       data-component="JobyKit.CoreComponents.table"
       class={["table", @zebra && "table-zebra", @size_class, @class]}
       {@rest}
@@ -775,7 +798,12 @@ defmodule JobyKit.CoreComponents do
   attr :id, :string, default: nil
   attr :flash, :map, default: %{}
   attr :title, :string, default: nil
-  attr :kind, :atom, values: [:info, :error], required: true
+
+  attr :kind, :atom,
+    values: [:info, :success, :warning, :error],
+    required: true,
+    doc: "Which flash key to read and how to style it."
+
   attr :class, :any, default: nil
   attr :rest, :global
 
@@ -795,17 +823,15 @@ defmodule JobyKit.CoreComponents do
       id={@id}
       data-component="JobyKit.CoreComponents.flash"
       phx-click={JS.push("lv:clear-flash", value: %{key: @kind}) |> hide("##{@id}")}
-      role={if @kind == :info, do: "status", else: "alert"}
+      role={if @kind == :error, do: "alert", else: "status"}
       class={[
         "alert w-80 sm:w-96 max-w-80 sm:max-w-96 text-wrap pointer-events-auto",
-        @kind == :info && "alert-info",
-        @kind == :error && "alert-error",
+        flash_tone_class(@kind),
         @class
       ]}
       {@rest}
     >
-      <.icon :if={@kind == :info} name="hero-information-circle" class="size-5 shrink-0" />
-      <.icon :if={@kind == :error} name="hero-exclamation-circle" class="size-5 shrink-0" />
+      <.icon name={flash_icon(@kind)} class="size-5 shrink-0" />
       <div>
         <p :if={@title} class="font-semibold">{@title}</p>
         <p>{msg}</p>
@@ -817,6 +843,20 @@ defmodule JobyKit.CoreComponents do
     </div>
     """
   end
+
+  # `:info` and `:error` are Phoenix's own flash keys; `:success` and
+  # `:warning` are here because apps use them constantly and previously
+  # could not — the enum rejected them, so the kit's flash was unusable
+  # for a whole class of message and hosts hand-rolled alerts instead.
+  defp flash_tone_class(:info), do: "alert-info"
+  defp flash_tone_class(:success), do: "alert-success"
+  defp flash_tone_class(:warning), do: "alert-warning"
+  defp flash_tone_class(:error), do: "alert-error"
+
+  defp flash_icon(:info), do: "hero-information-circle"
+  defp flash_icon(:success), do: "hero-check-circle"
+  defp flash_icon(:warning), do: "hero-exclamation-triangle"
+  defp flash_icon(:error), do: "hero-exclamation-circle"
 
   @doc """
   Renders the standard flash group: `:info` and `:error` flashes plus
@@ -923,7 +963,11 @@ defmodule JobyKit.CoreComponents do
   attr :prompt, :string, default: nil
   attr :options, :list
   attr :multiple, :boolean, default: false
-  attr :class, :any, default: nil, doc: "Utilities for the root fieldset — layout, width, spacing."
+
+  attr :class, :any,
+    default: nil,
+    doc: "Utilities for the root fieldset — layout, width, spacing."
+
   attr :input_class, :any, default: nil, doc: "Utilities for the control itself."
 
   attr :rest, :global,

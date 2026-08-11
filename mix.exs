@@ -1,7 +1,7 @@
 defmodule JobyKit.MixProject do
   use Mix.Project
 
-  @version "0.3.0"
+  @version "0.3.1"
   @source_url "https://github.com/jobycorp/joby_kit"
 
   def project do
@@ -12,6 +12,9 @@ defmodule JobyKit.MixProject do
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
       deps: deps(),
+      # A floor, not a target. Set below the current 90.9% so a genuine
+      # regression trips it without every small refactor doing so.
+      test_coverage: [threshold: 85],
       description: description(),
       package: package(),
       docs: docs(),
@@ -52,8 +55,7 @@ defmodule JobyKit.MixProject do
       links: %{
         "GitHub" => @source_url
       },
-      files:
-        ~w(lib priv/templates .formatter.exs mix.exs README.md LICENSE CHANGELOG.md
+      files: ~w(lib priv/templates .formatter.exs mix.exs README.md LICENSE CHANGELOG.md
            MIGRATING-0.3.md)
     ]
   end

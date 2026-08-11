@@ -142,25 +142,46 @@ defmodule Mix.Tasks.JobyKit.Install do
 
   defp patch_agents_md(path \\ "AGENTS.md") do
     case JobyKit.AgentsMd.patch(path) do
-      :created -> Mix.shell().info("* create #{path}")
-      :patched -> Mix.shell().info("* update #{path} (added JobyKit guidelines; replaced daisyUI conflict line if present)")
-      :unchanged -> :ok
+      :created ->
+        Mix.shell().info("* create #{path}")
+
+      :patched ->
+        Mix.shell().info(
+          "* update #{path} (added JobyKit guidelines; replaced daisyUI conflict line if present)"
+        )
+
+      :unchanged ->
+        :ok
     end
   end
 
   defp patch_claude_md(path \\ "CLAUDE.md") do
     case JobyKit.ClaudeMd.patch(path) do
-      :created -> Mix.shell().info("* create #{path} (auto-loaded by Claude Code; inlines the wrapper-contract diagnostics)")
-      :patched -> Mix.shell().info("* update #{path} (added JobyKit wrapper-contract block)")
-      :unchanged -> :ok
+      :created ->
+        Mix.shell().info(
+          "* create #{path} (auto-loaded by Claude Code; inlines the wrapper-contract diagnostics)"
+        )
+
+      :patched ->
+        Mix.shell().info("* update #{path} (added JobyKit wrapper-contract block)")
+
+      :unchanged ->
+        :ok
     end
   end
 
   defp patch_app_css(path \\ "assets/css/app.css") do
     case JobyKit.AppCss.patch(path) do
-      :patched -> Mix.shell().info("* update #{path} (added @source for deps/joby_kit/lib so Tailwind scans kit components)")
-      :unchanged -> :ok
-      :missing -> :ok
+      :patched ->
+        Mix.shell().info(
+          "* update #{path} (added @source for deps/joby_kit/lib so Tailwind scans kit components)"
+        )
+
+      :unchanged ->
+        :ok
+
+      :missing ->
+        :ok
     end
   end
 

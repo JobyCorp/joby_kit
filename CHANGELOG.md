@@ -1,6 +1,74 @@
 # Changelog
 
-## Unreleased
+> **Convention for core-component fixes:** if a change touches a
+> component a host might have forked (`import JobyKit.CoreComponents,
+> except: [...]`), say so explicitly — "if you've forked `table/1`, apply
+> this to your copy". Forks don't receive upstream fixes, and the 0.2.1
+> `table/1` fix reached a component one app never rendered while its fork
+> kept the identical bug. `mix joby_kit.lint` now reports
+> `:forked_wrapper`, and `/design.json` carries `forked_from_kit`.
+
+## v0.3.1
+
+Clears the audit's remaining polish, hardens the linter, and removes an
+internal codename from public surfaces. No breaking changes to component
+APIs; the linter does gain rules, so **expect new findings** — they are
+real, and each is explained below.
+
+### New lint rules
+
+* **`:unmarked_component` (warning)** — a public function component
+  renders markup but carries no `data-component` at all.
+  `:unregistered_wrapper` keys off that attribute, so it could only ever
+  see components that had already done half the registration; a
+  component with no marker — the most common way to skip the contract —
+  was invisible to it. Excluded by convention: `render/1` (a LiveView
+  callback), `*_preview/1` (the manifest's preview harness), and
+  `<App>Web.Layouts` functions. Those exclusions exist because the first
+  cut produced eighteen findings on the kit's own generated app, every
+  one structural.
+* **`:assign_new_default` (error)** — `assign_new(assigns, :x, ...)` on
+  an attr declared with a `default:`. The key is always present, so the
+  fallback is dead code. This is not hypothetical: it shipped as the
+  flash nil-id bug in 0.2.0, where every toast rendered without an id
+  and the dismiss handler became `JS.hide(to: "#")`.
+* **`:missing_data_component` no longer false-positives** on a wrapper
+  that builds its marker dynamically (`data-component={@dc}`), and is
+  now scoped to the component's own `def` — including every clause of a
+  multi-clause component. Checking the whole file let one compliant
+  wrapper vouch for every other function in it; scoping it naively to
+  the first clause then reported `input/1`, which has six, as
+  non-compliant. Both caught by a new end-to-end test that runs the
+  linter against JobyKit's own components.
+
+### Fixes
+
+* **`Bardo` is gone from public API.** The design page's
+  scraper-facing DOM ids are now `design-system-index` and
+  `design-category-<x>`. No fleet app referenced the old ones, and the
+  kit promises these are stable, so this was the last cheap moment.
+* **`flash/1` accepts `:success` and `:warning`.** The enum was
+  `[:info, :error]`, so apps with a success or warning message could not
+  use the kit's flash at all and hand-rolled alerts instead.
+* **The md patchers no longer duplicate their block.** A file that kept
+  the start marker but lost the end one got a second block appended —
+  and then, with both markers present, looked done forever, making the
+  duplicate permanent.
+* `<.table>` gains `table_id`, since `id` is required for stream
+  containers and lands on `<tbody>`; `attr` docs now cover the enums
+  that agents read out of `/design.json`.
+
+### Housekeeping
+
+* A `test_coverage` threshold of 85% is configured, so `mix test --cover`
+  in CI has a real floor. Current coverage is 90.9%.
+* The kit's spacing-and-typography principle — own your box, nothing
+  outside it — is now in the `AGENTS.md` and `CLAUDE.md` blocks that
+  every install writes, so agents building new wrappers get the rule
+  that 0.3.0 was built around.
+* Stale release tarballs, an `erl_crash.dump`, and the resolved
+  `NOTES-flash-nil-id.md` scratch file removed from the repo.
+
 
 Polish pass over the items the audit had left open, plus removal of an
 internal codename from public surfaces.

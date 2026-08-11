@@ -53,13 +53,27 @@ defmodule JobyKit.ClaudeMd do
     |> File.read!()
   end
 
+  # Requiring *both* markers meant a file that kept the start marker but
+  # lost the end one got a second block appended — and then, with both
+  # markers now present, was considered done forever, leaving the
+  # duplicate permanently. Treat a lone start marker as "already has a
+  # block, just a damaged one" and leave it alone rather than compound it.
   defp ensure_block(contents, section) do
-    if String.contains?(contents, @start_marker) and String.contains?(contents, @end_marker) do
-      {contents, false}
-    else
-      separator = if String.ends_with?(contents, "\n") or contents == "", do: "", else: "\n"
-      trailing = if String.ends_with?(section, "\n"), do: "", else: "\n"
-      {contents <> separator <> section <> trailing, true}
+    cond do
+      String.contains?(contents, @start_marker) and String.contains?(contents, @end_marker) ->
+        {contents, false}
+
+      # Start marker without its end: the block is present but was
+      # truncated by hand. Appending another leaves two start markers,
+      # and from then on both markers are present so it looks done —
+      # the duplicate becomes permanent. Leave the damaged block alone.
+      String.contains?(contents, @start_marker) ->
+        {contents, false}
+
+      true ->
+        separator = if String.ends_with?(contents, "\n") or contents == "", do: "", else: "\n"
+        trailing = if String.ends_with?(section, "\n"), do: "", else: "\n"
+        {contents <> separator <> section <> trailing, true}
     end
   end
 end

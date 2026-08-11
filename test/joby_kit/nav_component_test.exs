@@ -126,7 +126,9 @@ defmodule JobyKit.NavComponentTest do
 
     test "accepts global attributes, as the contract requires" do
       assigns = %{}
-      html = rendered_to_string(~H|<NavComponent.simple_nav id="main-nav" aria-label="Primary" />|)
+
+      html =
+        rendered_to_string(~H|<NavComponent.simple_nav id="main-nav" aria-label="Primary" />|)
 
       assert html =~ ~s|id="main-nav"|
       assert html =~ ~s|aria-label="Primary"|

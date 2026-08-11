@@ -141,7 +141,9 @@ defmodule Mix.Tasks.JobyKit.Bootstrap do
 
       case Regex.run(~r{(\s*)get\s+"/"\s*,\s+PageController\s*,\s+:home[^\n]*}, contents) do
         [match, indent] ->
-          Mix.shell().info("* update router (replace home route with /, /design, /custom-designs LiveViews)")
+          Mix.shell().info(
+            "* update router (replace home route with /, /design, /custom-designs LiveViews)"
+          )
 
           replacement =
             [

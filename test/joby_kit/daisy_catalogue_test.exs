@@ -8,6 +8,7 @@ defmodule JobyKit.DaisyCatalogueTest do
   test "categories/0 returns the seven daisy categories" do
     cats = DaisyCatalogue.categories()
     assert length(cats) == 7
+
     assert Enum.map(cats, & &1.name) == [
              "Actions",
              "Data display",
@@ -30,7 +31,7 @@ defmodule JobyKit.DaisyCatalogueTest do
   test "merged/1 leaves entries at default_status when manifest has no overrides" do
     defmodule NoOverridesManifest do
       use JobyKit.Manifest
-      category :core, label: "Core", description: ""
+      category(:core, label: "Core", description: "")
     end
 
     [actions | _] = DaisyCatalogue.merged(NoOverridesManifest)
@@ -69,7 +70,9 @@ defmodule JobyKit.DaisyCatalogueTest do
 
   test "docs_url/1 derives a slug from a bare primitive name" do
     assert DaisyCatalogue.docs_url("Button") == "https://daisyui.com/components/button/"
-    assert DaisyCatalogue.docs_url("Radial progress") == "https://daisyui.com/components/radial-progress/"
+
+    assert DaisyCatalogue.docs_url("Radial progress") ==
+             "https://daisyui.com/components/radial-progress/"
   end
 
   test "docs_url/1 honours an entry's docs_slug over its display name" do
@@ -112,7 +115,18 @@ defmodule JobyKit.DaisyCatalogueTest do
       for category <- DaisyCatalogue.categories(),
           component <- category.components,
           url = DaisyCatalogue.docs_url(component),
-          {out, 0} = System.cmd("curl", ["-s", "-o", "/dev/null", "-w", "%{http_code}", "-L", "--max-time", "10", url]),
+          {out, 0} =
+            System.cmd("curl", [
+              "-s",
+              "-o",
+              "/dev/null",
+              "-w",
+              "%{http_code}",
+              "-L",
+              "--max-time",
+              "10",
+              url
+            ]),
           out != "200" do
         "#{component.id} -> #{url} (HTTP #{out})"
       end

@@ -18,7 +18,8 @@ defmodule Mix.Tasks.JobyKit.InstallTest do
       # All nine, not just the obvious five: header/list/table/flash_group were
       # shipped-but-unregistered through 0.2.2, so agents following the build
       # order couldn't discover half the kit.
-      for name <- ~w(button badge card icon input eyebrow flash flash_group header list modal table theme_toggle) do
+      for name <-
+            ~w(button badge card icon input eyebrow flash flash_group header list modal table theme_toggle) do
         assert manifest =~ "component CoreComponents, :#{name},",
                "expected #{name} to be registered in the generated manifest"
       end

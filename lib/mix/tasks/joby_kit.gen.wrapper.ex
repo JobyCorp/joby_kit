@@ -66,14 +66,14 @@ defmodule Mix.Tasks.JobyKit.Gen.Wrapper do
     daisy = parse_daisy(opts[:daisy], category)
 
     app = Mix.Project.config()[:app] || Mix.raise("could not determine :app from mix.exs")
-    web_module = opts[:web] || (Macro.camelize(to_string(app)) <> "Web")
+    web_module = opts[:web] || Macro.camelize(to_string(app)) <> "Web"
     web_path = Macro.underscore(web_module)
 
     target_module_short = target_module_short(category)
     target_module = web_module <> "." <> target_module_short
     target_path = "lib/#{web_path}/components/#{Macro.underscore(target_module_short)}.ex"
 
-    manifest_module = opts[:manifest] || (web_module <> ".DesignManifest")
+    manifest_module = opts[:manifest] || web_module <> ".DesignManifest"
     manifest_path = "lib/#{web_path}/design_manifest.ex"
     previews_path = "lib/#{web_path}/design_previews.ex"
 
@@ -352,19 +352,22 @@ defmodule Mix.Tasks.JobyKit.Gen.Wrapper do
 
       Regex.match?(group_re, source) ->
         new_source =
-          Regex.replace(group_re, source, fn _full, members ->
-            extended =
-              members
-              |> String.split(",")
-              |> Enum.map(&String.trim/1)
-              |> Enum.reject(&(&1 == ""))
-              |> Kernel.++([target_short])
-              |> Enum.uniq()
-              |> Enum.sort()
-              |> Enum.join(", ")
+          Regex.replace(
+            group_re,
+            source,
+            fn _full, members ->
+              extended =
+                members
+                |> String.split(",")
+                |> Enum.map(&String.trim/1)
+                |> Enum.reject(&(&1 == ""))
+                |> Kernel.++([target_short])
+                |> Enum.uniq()
+                |> Enum.sort()
+                |> Enum.join(", ")
 
-            "alias #{web_module}.{#{extended}}"
-          end, global: false)
+              "alias #{web_module}.{#{extended}}"
+            end, global: false)
 
         File.write!(path, new_source)
 

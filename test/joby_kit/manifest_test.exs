@@ -68,6 +68,7 @@ defmodule JobyKit.ManifestTest do
 
     assert Manifest.fetch(JobyKit.Test.Components, :nope) == nil
   end
+
   describe "forked_from_kit?/2" do
     test "a kit-named component owned by the host is a fork" do
       # airo does `import JobyKit.CoreComponents, except: [button: 1, table: 1]`
@@ -162,5 +163,4 @@ defmodule JobyKit.ManifestTest do
       assert_raise ArgumentError, fn -> JobyKit.Test.Manifest.category_description(:nope) end
     end
   end
-
 end

@@ -24,7 +24,10 @@ defmodule JobyKit.LintTest do
       # raw_html_primitive both fire against it. Filter those out to assert
       # the per-entry checks are all clean for good_button.
       per_entry =
-        Enum.reject(violations, &(&1.rule in [:unregistered_wrapper, :raw_html_primitive]))
+        Enum.reject(
+          violations,
+          &(&1.rule in [:unregistered_wrapper, :raw_html_primitive, :unmarked_component])
+        )
 
       assert per_entry == []
     end
@@ -153,7 +156,8 @@ defmodule JobyKit.LintTest do
     end
 
     test "deduplicates: a data-component that appears twice in the source produces one violation" do
-      tmp = Path.join(System.tmp_dir!(), "joby_kit_lint_dup_#{System.unique_integer([:positive])}.ex")
+      tmp =
+        Path.join(System.tmp_dir!(), "joby_kit_lint_dup_#{System.unique_integer([:positive])}.ex")
 
       File.write!(tmp, """
       defmodule JobyKit.Test.LintFixtures.Twice do
@@ -213,6 +217,7 @@ defmodule JobyKit.LintTest do
 
     test "fires on raw <button> in a .heex template", %{tmp: tmp} do
       path = Path.join(tmp, "page.heex")
+
       File.write!(path, ~S"""
       <div>
         <button class="btn">Click me</button>
@@ -285,6 +290,7 @@ defmodule JobyKit.LintTest do
 
     test "skips .ex files without ~H sigils (no template content)", %{tmp: tmp} do
       path = Path.join(tmp, "task.ex")
+
       File.write!(path, ~S"""
       defmodule Mix.Tasks.Demo do
         # The string literal mentions `<button>` for help text but there
@@ -300,6 +306,7 @@ defmodule JobyKit.LintTest do
 
     test "respects per-line opt-out via jobykit:allow-raw-html on same line", %{tmp: tmp} do
       path = Path.join(tmp, "page.heex")
+
       File.write!(path, ~S"""
       <div>
         <button class="btn">x</button> <%!-- jobykit:allow-raw-html --%>
@@ -312,6 +319,7 @@ defmodule JobyKit.LintTest do
 
     test "respects per-line opt-out via jobykit:allow-raw-html on preceding line", %{tmp: tmp} do
       path = Path.join(tmp, "page.heex")
+
       File.write!(path, ~S"""
       <div>
         <%!-- jobykit:allow-raw-html --%>
@@ -492,11 +500,184 @@ defmodule JobyKit.LintTest do
       on_exit(fn -> File.rm(path) end)
 
       violations = Lint.run(manifest: GoodManifest, paths: [path])
-      names = violations |> Enum.filter(&(&1.rule == :unregistered_wrapper)) |> Enum.map(& &1.message)
 
-      refute Enum.any?(names, &(&1 =~ "<name>")), "docstring prose should not register as a wrapper"
-      assert Enum.any?(names, &(&1 =~ "DocProse.thing")), "the real wrapper should still be flagged"
+      names =
+        violations |> Enum.filter(&(&1.rule == :unregistered_wrapper)) |> Enum.map(& &1.message)
+
+      refute Enum.any?(names, &(&1 =~ "<name>")),
+             "docstring prose should not register as a wrapper"
+
+      assert Enum.any?(names, &(&1 =~ "DocProse.thing")),
+             "the real wrapper should still be flagged"
     end
+  end
+
+  describe "unmarked_component" do
+    test "catches a component that skipped the contract entirely" do
+      # :unregistered_wrapper keys off data-component, so it only sees
+      # components that already did half the registration. A public
+      # component with markup and no marker at all — the most common way
+      # to skip the contract — was invisible to it.
+      violations = Lint.run(manifest: GoodManifest, paths: ["test/support/lint_fixtures.ex"])
+      unmarked = Enum.filter(violations, &(&1.rule == :unmarked_component))
+
+      assert [v] = unmarked
+      assert v.function == :naked_button
+      assert v.message =~ "BadComponents.naked_button"
+    end
+
+    test "a component carrying the marker is left to :unregistered_wrapper" do
+      violations = Lint.run(manifest: GoodManifest, paths: ["test/support/lint_fixtures.ex"])
+
+      refute Enum.any?(
+               violations,
+               &(&1.rule == :unmarked_component and &1.function == :stray_pill)
+             )
+    end
+
+    test "does not fire on things that render markup but are not components" do
+      # Found by running the rule against the kit's own generated app: it
+      # produced eighteen findings, every one of them structural — LiveView
+      # render callbacks, the previews harness, and layout functions.
+      path =
+        write_tmp("conventions.ex", """
+        defmodule DemoWeb.HomeLive do
+          use Phoenix.Component
+
+          def render(assigns) do
+            ~H"<div><p>page</p></div>"
+          end
+        end
+
+        defmodule DemoWeb.DesignPreviews do
+          use Phoenix.Component
+
+          def button_preview(assigns) do
+            ~H"<div><span>preview</span></div>"
+          end
+        end
+
+        defmodule DemoWeb.Layouts do
+          use Phoenix.Component
+
+          def app(assigns) do
+            ~H"<main><p>chrome</p></main>"
+          end
+        end
+        """)
+
+      violations = Lint.run(manifest: GoodManifest, paths: [path])
+
+      assert Enum.filter(violations, &(&1.rule == :unmarked_component)) == [],
+             "render/1, *_preview/1 and Layouts functions are not components"
+    end
+
+    test "still fires on a genuine unmarked component in the same shapes" do
+      path =
+        write_tmp("real_miss.ex", """
+        defmodule DemoWeb.WidgetComponents do
+          use Phoenix.Component
+
+          def workspace_picker(assigns) do
+            ~H"<div><span>picker</span></div>"
+          end
+        end
+        """)
+
+      violations = Lint.run(manifest: GoodManifest, paths: [path])
+
+      assert [v] = Enum.filter(violations, &(&1.rule == :unmarked_component))
+      assert v.function == :workspace_picker
+    end
+
+    test "attributes each def to its own module in a multi-module file" do
+      # The fixture file holds several modules; taking the first
+      # `defmodule` blamed the wrong one.
+      violations = Lint.run(manifest: GoodManifest, paths: ["test/support/lint_fixtures.ex"])
+
+      refute Enum.any?(
+               violations,
+               &(&1.rule == :unmarked_component and &1.message =~ "GoodComponents.naked_button")
+             )
+    end
+  end
+
+  describe "assign_new_default" do
+    test "flags assign_new on an attr that declares a default" do
+      # This exact shape shipped as the flash nil-id bug: attr :id had
+      # `default: nil`, so the key was always present, assign_new never
+      # fired, and every toast rendered without an id.
+      path =
+        write_tmp("assign_new.ex", """
+        defmodule Regression do
+          use Phoenix.Component
+
+          attr :id, :string, default: nil
+
+          def thing(assigns) do
+            assigns = assign_new(assigns, :id, fn -> "fallback" end)
+            ~H"<div id={@id}></div>"
+          end
+        end
+        """)
+
+      violations = Lint.run(manifest: GoodManifest, paths: [path])
+
+      assert [v] = Enum.filter(violations, &(&1.rule == :assign_new_default))
+      assert v.severity == :error
+      assert v.message =~ "never runs"
+      assert v.message =~ "assigns.id || fallback"
+    end
+
+    test "assign_new on an attr without a default is correct usage" do
+      path =
+        write_tmp("assign_new_ok.ex", """
+        defmodule Correct do
+          use Phoenix.Component
+
+          attr :name, :any
+
+          def thing(assigns) do
+            assigns = assign_new(assigns, :name, fn -> "derived" end)
+            ~H"<div>{@name}</div>"
+          end
+        end
+        """)
+
+      violations = Lint.run(manifest: GoodManifest, paths: [path])
+      assert Enum.filter(violations, &(&1.rule == :assign_new_default)) == []
+    end
+  end
+
+  describe "missing_data_component: scoping" do
+    test "a wrapper that builds its own marker is not reported as missing" do
+      # `data-component={@dc}` satisfies the contract at runtime; calling
+      # it missing told a compliant wrapper it was broken.
+      Code.ensure_loaded!(JobyKit.Test.LintFixtures.DynamicComponents)
+      Code.ensure_loaded!(JobyKit.Test.LintFixtures.DynamicManifest)
+
+      violations = Lint.run(manifest: JobyKit.Test.LintFixtures.DynamicManifest, paths: [])
+
+      assert Enum.filter(violations, &(&1.rule == :missing_data_component)) == []
+    end
+
+    test "a sibling's marker does not vouch for a component that lacks one" do
+      # The check scanned the whole file, so one compliant wrapper
+      # exempted every other function in it.
+      violations = Lint.run(manifest: BadManifest, paths: [])
+
+      assert Enum.any?(
+               violations,
+               &(&1.rule == :missing_data_component and &1.function == :naked_button)
+             )
+    end
+  end
+
+  defp write_tmp(name, contents) do
+    path = Path.join(System.tmp_dir!(), "jk_#{System.unique_integer([:positive])}_#{name}")
+    File.write!(path, contents)
+    on_exit(fn -> File.rm(path) end)
+    path
   end
 
   defp run_on(fixture) do

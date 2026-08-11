@@ -49,11 +49,12 @@ defmodule JobyKit.Test.LintFixtures.GoodManifest do
 
   alias JobyKit.Test.LintFixtures.GoodComponents
 
-  category :core, label: "Core", description: "Core wrappers."
+  category(:core, label: "Core", description: "Core wrappers.")
 
-  component GoodComponents, :good_button,
+  component(GoodComponents, :good_button,
     category: :core,
     summary: "A clean button."
+  )
 end
 
 defmodule JobyKit.Test.LintFixtures.BadManifest do
@@ -62,17 +63,51 @@ defmodule JobyKit.Test.LintFixtures.BadManifest do
 
   alias JobyKit.Test.LintFixtures.BadComponents
 
-  category :core, label: "Core", description: "Core wrappers."
+  category(:core, label: "Core", description: "Core wrappers.")
 
   # Registered wrapper without data-component or rest_global —
   # should fire missing_data_component AND missing_rest_global.
-  component BadComponents, :naked_button,
+  component(BadComponents, :naked_button,
     category: :core,
     summary: "A button missing the contract."
+  )
 
   # Manifest drift — points at a function that doesn't exist on the
   # module. Should fire :manifest_drift.
-  component BadComponents, :ghost_function,
+  component(BadComponents, :ghost_function,
     category: :core,
     summary: "Drift target."
+  )
+end
+
+defmodule JobyKit.Test.LintFixtures.DynamicComponents do
+  @moduledoc false
+  use Phoenix.Component
+
+  # Builds the marker rather than hardcoding it. Valid — the attribute is
+  # present at runtime — but a literal string search reports it missing.
+  attr :rest, :global
+  slot :inner_block, required: true
+
+  def dynamic_pill(assigns) do
+    assigns = assign(assigns, :dc, "#{inspect(__MODULE__)}.dynamic_pill")
+
+    ~H"""
+    <span data-component={@dc} {@rest}>{render_slot(@inner_block)}</span>
+    """
+  end
+end
+
+defmodule JobyKit.Test.LintFixtures.DynamicManifest do
+  @moduledoc false
+  use JobyKit.Manifest
+
+  alias JobyKit.Test.LintFixtures.DynamicComponents
+
+  category(:core, label: "Core", description: "Core wrappers.")
+
+  component(DynamicComponents, :dynamic_pill,
+    category: :core,
+    summary: "Builds its own data-component."
+  )
 end

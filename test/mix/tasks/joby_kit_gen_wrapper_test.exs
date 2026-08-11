@@ -81,9 +81,9 @@ defmodule Mix.Tasks.JobyKit.Gen.WrapperTest do
         comp = File.read!("lib/demo_app_web/components/composite_components.ex")
         assert comp =~ "defmodule DemoAppWeb.CompositeComponents do"
         # `use <App>Web, :html`, not a bare Phoenix.Component: composites
-      # compose core wrappers and verified routes.
-      assert comp =~ "use DemoAppWeb, :html"
-      assert comp =~ "alias JobyKit.CoreComponents"
+        # compose core wrappers and verified routes.
+        assert comp =~ "use DemoAppWeb, :html"
+        assert comp =~ "alias JobyKit.CoreComponents"
         assert comp =~ "def chat_panel(assigns)"
         assert comp =~ ~s|data-component="DemoAppWeb.CompositeComponents.chat_panel"|
 
@@ -105,7 +105,13 @@ defmodule Mix.Tasks.JobyKit.Gen.WrapperTest do
     test "rejects --daisy for composites", %{tmp_dir: tmp_dir} do
       in_installed_project(tmp_dir, fn ->
         assert_raise Mix.Error, ~r/--daisy is only meaningful with --category core/, fn ->
-          Mix.Tasks.JobyKit.Gen.Wrapper.run(["thing", "--category", "composite", "--daisy", "modal"])
+          Mix.Tasks.JobyKit.Gen.Wrapper.run([
+            "thing",
+            "--category",
+            "composite",
+            "--daisy",
+            "modal"
+          ])
         end
       end)
     end
@@ -129,7 +135,10 @@ defmodule Mix.Tasks.JobyKit.Gen.WrapperTest do
         Mix.Tasks.JobyKit.Gen.Wrapper.run(["metric_tile"])
 
         manifest = File.read!("lib/demo_app_web/design_manifest.ex")
-        modal_pos = :binary.match(manifest, "component(DemoAppWeb.CoreComponents, :metric_tile,") |> elem(0)
+
+        modal_pos =
+          :binary.match(manifest, "component(DemoAppWeb.CoreComponents, :metric_tile,") |> elem(0)
+
         overrides_pos = :binary.match(manifest, "def daisy_overrides do") |> elem(0)
         assert modal_pos < overrides_pos
       end)
@@ -160,9 +169,11 @@ defmodule Mix.Tasks.JobyKit.Gen.WrapperTest do
           )
         )
 
-        assert_raise Mix.Error, ~r/manifest entry for CoreComponents.metric_tile already exists/, fn ->
-          Mix.Tasks.JobyKit.Gen.Wrapper.run(["metric_tile"])
-        end
+        assert_raise Mix.Error,
+                     ~r/manifest entry for CoreComponents.metric_tile already exists/,
+                     fn ->
+                       Mix.Tasks.JobyKit.Gen.Wrapper.run(["metric_tile"])
+                     end
       end)
     end
   end
@@ -205,8 +216,11 @@ defmodule Mix.Tasks.JobyKit.Gen.WrapperTest do
 
       for path <- Path.wildcard("lib/demo_app_web/**/*.ex") do
         case path |> File.read!() |> Code.string_to_quoted() do
-          {:ok, _ast} -> :ok
-          {:error, {meta, msg, token}} -> flunk("#{path} does not parse (#{inspect(meta)}): #{msg}#{token}")
+          {:ok, _ast} ->
+            :ok
+
+          {:error, {meta, msg, token}} ->
+            flunk("#{path} does not parse (#{inspect(meta)}): #{msg}#{token}")
         end
       end
 
