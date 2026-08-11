@@ -1,7 +1,7 @@
 defmodule JobyKit.MixProject do
   use Mix.Project
 
-  @version "0.2.1"
+  @version "0.2.2"
   @source_url "https://github.com/jobycorp/joby_kit"
 
   def project do
@@ -62,7 +62,17 @@ defmodule JobyKit.MixProject do
       main: "readme",
       extras: ["README.md", "CHANGELOG.md"],
       source_url: @source_url,
-      source_ref: "v#{@version}"
+      source_ref: "v#{@version}",
+      # These are referenced by name in the README/CHANGELOG prose but are
+      # deliberately `@moduledoc false` (internal patchers) or hidden
+      # upstream. Render them as plain code instead of trying to link them.
+      skip_code_autolink_to: [
+        "JobyKit.AgentsMd",
+        "JobyKit.ClaudeMd",
+        "JobyKit.NavPatcher",
+        "JobyKit.AppCss",
+        "Phoenix.Component.__components__/0"
+      ]
     ]
   end
 end

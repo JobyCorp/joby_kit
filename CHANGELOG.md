@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.2.2
+
+Docs-only release. No functional change — skip it if 0.2.1 is working
+for you.
+
+* ExDoc no longer tries to link the internal patcher modules
+  (`JobyKit.AgentsMd`, `JobyKit.ClaudeMd`, `JobyKit.NavPatcher`,
+  `JobyKit.AppCss`), which are `@moduledoc false` on purpose, or
+  `Phoenix.Component.__components__/0`, which is hidden upstream. They
+  render as plain code via `skip_code_autolink_to`, so the published
+  docs build warning-free.
+
 ## v0.2.1
 
 Two rendering fixes, both in `CoreComponents`:
