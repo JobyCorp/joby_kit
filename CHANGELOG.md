@@ -8,6 +8,36 @@
 > kept the identical bug. `mix joby_kit.lint` now reports
 > `:forked_wrapper`, and `/design.json` carries `forked_from_kit`.
 
+## Unreleased
+
+### `/design` is the kit's page, structurally
+
+**Which page a component lands on is now decided by who owns the
+module, not by the category the host declared.**
+
+`category` is a free atom the host picks, so keying the two pages off it
+made the split a convention rather than a rule — and conventions get
+broken. Found during the first fleet upgrade: an app had registered two
+of its own components under `category: :core`, so they rendered on
+`/design`, the page whose entire promise is *"identical across every
+JobyKit consumer"*. To anyone reading that page — or any agent scraping
+it — they looked like components JobyKit ships.
+
+`page_component/1` now renders only entries whose module the kit owns
+(`JobyKit.PageComponent.kit_component_modules/0`); `custom_page_component/1`
+renders everything else. Category still groups entries within whichever
+page owns them.
+
+Deliberately an explicit module list rather than a `JobyKit.` prefix
+check: "what the kit provides" is finite and knowable, and prefix
+matching would hand the kit page to anything a host chose to namespace
+under `JobyKit`.
+
+**No host action needed.** A misfiled component moves to
+`/custom-designs` on upgrade with no manifest change. Recategorising it
+to `:composite` is still worth doing so the heading reads right, but
+nothing is broken if you don't.
+
 ## v0.3.1
 
 Clears the audit's remaining polish, hardens the linter, and removes an

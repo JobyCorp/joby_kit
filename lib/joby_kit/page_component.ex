@@ -5,16 +5,20 @@ defmodule JobyKit.PageComponent do
   Two surfaces are exposed:
 
     * `page_component/1` — JobyKit's curated `/design` page. Renders the
-      decision tree, wrapper contract, **only the `:core` category**
-      from the host manifest (the kit's canonical wrappers), and the
-      daisyUI catalogue. Identical across every JobyKit consumer; this
-      is the agentic-first contract surface.
+      decision tree, wrapper contract, **every entry whose module the kit
+      owns**, and the daisyUI catalogue. Identical across every JobyKit
+      consumer; this is the agentic-first contract surface.
 
     * `custom_page_component/1` — host-defined composites and domain
-      components. Renders **only `:composite` and `:domain` categories**
-      from the host manifest, plus a slim breadcrumb back to `/design`.
-      Hosts mount this at any path they like (`/custom-designs`,
-      `/composites`, etc.).
+      components. Renders **every entry the kit does not own**, plus a
+      slim breadcrumb back to `/design`. Hosts mount this at any path
+      they like (`/custom-designs`, `/composites`, etc.).
+
+  The split is by module ownership, not by declared category. Category is
+  a host-chosen atom, so keying the pages off it meant an app could
+  register its own component as `:core` and have it appear on the kit's
+  page as though JobyKit shipped it. Category now groups entries within
+  whichever page owns them.
 
   Both consume the same manifest module (`use JobyKit.Manifest`) but
   filter differently. The JSON endpoint
@@ -35,9 +39,7 @@ defmodule JobyKit.PageComponent do
   attr :custom_path, :string, default: nil
 
   def page_component(assigns) do
-    entries_by_category =
-      assigns.manifest.by_category()
-      |> Enum.filter(fn {category, _} -> category == :core end)
+    entries_by_category = entries_owned_by(assigns.manifest, :kit)
 
     assigns =
       assigns
@@ -117,9 +119,7 @@ defmodule JobyKit.PageComponent do
       "Composites and domain components defined by this app. The kit's curated wrapper inventory and the wrapper contract live on /design."
 
   def custom_page_component(assigns) do
-    entries_by_category =
-      assigns.manifest.by_category()
-      |> Enum.reject(fn {category, _} -> category == :core end)
+    entries_by_category = entries_owned_by(assigns.manifest, :host)
 
     assigns = assign(assigns, :entries_by_category, entries_by_category)
 
@@ -152,6 +152,46 @@ defmodule JobyKit.PageComponent do
     </div>
     """
   end
+
+  # Which page an entry lands on is decided by **who owns the module**,
+  # not by the category the host declared.
+  #
+  # Category is a free atom the host picks, so the old split let an app
+  # register its own component as `:core` and have it render on /design —
+  # the page whose whole promise is "identical across every JobyKit
+  # consumer". Found in the wild: an app had two of its own components
+  # sitting on the kit page, reading as stock to anyone (or any agent)
+  # looking at it. Ownership is not a matter of opinion, so it should not
+  # be a matter of convention either.
+  #
+  # Category still groups entries *within* a page.
+  defp entries_owned_by(manifest, ownership) do
+    manifest.by_category()
+    |> Enum.map(fn {category, entries} ->
+      {category, Enum.filter(entries, &(kit_owned?(&1.module) == (ownership == :kit)))}
+    end)
+    |> Enum.reject(fn {_category, entries} -> entries == [] end)
+  end
+
+  # An explicit list, not a `JobyKit.` prefix check. "What the kit
+  # provides" is finite and knowable, and prefix-matching would hand the
+  # kit page to anything a host chose to namespace under JobyKit —
+  # including the kit's own test fixtures, which stand in for host
+  # modules. Add a module here when the kit starts shipping components
+  # from it; `kit_component_modules/0` is public so hosts and tests can
+  # ask the same question the page asks.
+  @kit_component_modules [JobyKit.CoreComponents, JobyKit.NavComponent]
+
+  @doc """
+  The modules whose components `page_component/1` treats as kit-provided.
+
+  Everything else a manifest registers belongs on the custom-designs
+  page, whatever category it declares.
+  """
+  @spec kit_component_modules() :: [module()]
+  def kit_component_modules, do: @kit_component_modules
+
+  defp kit_owned?(module), do: module in @kit_component_modules
 
   attr :build_order, :list, required: true
   attr :taxonomy, :list, required: true

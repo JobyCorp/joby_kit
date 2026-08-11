@@ -15,19 +15,6 @@ defmodule JobyKit.PageComponentTest do
     assert html =~ "design-system-daisyui"
   end
 
-  test "page_component shows only :core entries on the kit surface" do
-    html = render_component(&PageComponent.page_component/1, manifest: JobyKit.Test.Manifest)
-
-    # Both registered entries are :core in the test manifest, both should render.
-    assert html =~ "design-category-core"
-    assert html =~ ~s(data-function="button")
-    assert html =~ ~s(data-function="badge")
-
-    # No composite/domain category articles render.
-    refute html =~ "design-category-composite"
-    refute html =~ "design-category-domain"
-  end
-
   test "page_component renders the agent-redirect callout when custom_path is set" do
     html =
       render_component(&PageComponent.page_component/1,
@@ -44,18 +31,76 @@ defmodule JobyKit.PageComponentTest do
     refute html =~ "design-system-agent-redirect"
   end
 
-  test "custom_page_component renders only non-:core entries and a back-link" do
-    defmodule MultiCategoryManifest do
+  test "the kit surface shows kit-owned components, whatever category they declare" do
+    defmodule KitOwnedManifest do
+      use JobyKit.Manifest
+
+      category(:core, label: "Core", description: "")
+
+      component(JobyKit.CoreComponents, :button, category: :core, summary: "kit button")
+      component(JobyKit.NavComponent, :simple_nav, category: :core, summary: "kit nav")
+    end
+
+    html = render_component(&PageComponent.page_component/1, manifest: KitOwnedManifest)
+
+    assert html =~ ~s(data-function="button")
+    assert html =~ ~s(data-function="simple_nav")
+  end
+
+  test "a host component registered as :core does NOT reach the kit surface" do
+    # The regression this split exists for. Category is a host-chosen
+    # atom, so keying the pages off it let an app label its own component
+    # `:core` and have it render on /design as though JobyKit shipped it.
+    # Found in the wild: an API gateway had two of its own components
+    # sitting on the kit page. Ownership decides the page now.
+    defmodule ImposterManifest do
       use JobyKit.Manifest
 
       alias JobyKit.Test.Components
 
       category(:core, label: "Core", description: "")
+
+      component(JobyKit.CoreComponents, :button, category: :core, summary: "genuinely kit")
+      component(Components, :badge, category: :core, summary: "host component claiming :core")
+    end
+
+    kit = render_component(&PageComponent.page_component/1, manifest: ImposterManifest)
+    custom = render_component(&PageComponent.custom_page_component/1, manifest: ImposterManifest)
+
+    # The kit's own component is on the kit page.
+    assert kit =~ ~s(data-function="button")
+
+    # The host's is not — despite declaring :core.
+    refute kit =~ ~s(data-function="badge")
+
+    # It lands on the custom page instead, with no host action required.
+    assert custom =~ ~s(data-function="badge")
+    refute custom =~ ~s(data-function="button")
+  end
+
+  test "kit_component_modules/0 names what the kit page will show" do
+    modules = PageComponent.kit_component_modules()
+
+    assert JobyKit.CoreComponents in modules
+    assert JobyKit.NavComponent in modules
+
+    # Every module the shipped install template registers under a JobyKit
+    # namespace has to be in this list, or those components silently
+    # vanish from /design in every generated app.
+    refute JobyKit.Test.Components in modules
+  end
+
+  test "custom_page_component renders host entries and a back-link" do
+    defmodule MultiCategoryManifest do
+      use JobyKit.Manifest
+
+      alias JobyKit.Test.Components
+
       category(:composite, label: "Composites", description: "")
       category(:domain, label: "Domain", description: "")
 
-      component(Components, :button, category: :core, summary: "core entry")
-      component(Components, :badge, category: :composite, summary: "composite entry")
+      component(Components, :button, category: :composite, summary: "composite entry")
+      component(Components, :badge, category: :domain, summary: "domain entry")
     end
 
     html =
@@ -67,12 +112,8 @@ defmodule JobyKit.PageComponentTest do
     assert html =~ ~s(data-jobykit-page="custom")
     assert html =~ ~s(href="/design")
     assert html =~ "design-category-composite"
-
-    # :core never surfaces here even when it's in the manifest.
-    refute html =~ "design-category-core"
-    refute html =~ ~s(data-function="button")
-
-    # Composites (and domain) entries do.
+    assert html =~ "design-category-domain"
+    assert html =~ ~s(data-function="button")
     assert html =~ ~s(data-function="badge")
   end
 end
