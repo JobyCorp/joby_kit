@@ -691,6 +691,205 @@ defmodule JobyKit.CoreComponentsTest do
     end
   end
 
+  describe "eyebrow" do
+    test "carries the contract and renders its content" do
+      assigns = %{}
+      html = rendered_to_string(~H|<CoreComponents.eyebrow>Workspace</CoreComponents.eyebrow>|)
+
+      assert html =~ ~s|data-component="JobyKit.CoreComponents.eyebrow"|
+      assert html =~ "Workspace"
+      assert html =~ "uppercase"
+    end
+
+    test "card and header render their eyebrow slots through it" do
+      # The point of extracting this: one definition, not three copies of
+      # the same tracking/size/opacity string drifting apart.
+      assigns = %{}
+
+      card =
+        rendered_to_string(~H"""
+        <CoreComponents.card>
+          <:eyebrow>From a card</:eyebrow>
+          Body
+        </CoreComponents.card>
+        """)
+
+      header =
+        rendered_to_string(~H"""
+        <CoreComponents.header>
+          Title
+          <:eyebrow>From a header</:eyebrow>
+        </CoreComponents.header>
+        """)
+
+      assert card =~ ~s|data-component="JobyKit.CoreComponents.eyebrow"|
+      assert header =~ ~s|data-component="JobyKit.CoreComponents.eyebrow"|
+    end
+  end
+
+  describe "badge" do
+    test "each tone maps to a distinct daisy class" do
+      assigns = %{}
+
+      classes =
+        for tone <- ~w(neutral ok warn danger info), into: %{} do
+          assigns = Map.put(assigns, :tone, tone)
+          {tone, root_class(rendered_to_string(~H|<CoreComponents.badge tone={@tone}>x</CoreComponents.badge>|))}
+        end
+
+      assert classes["ok"] =~ "badge-success"
+      assert classes["warn"] =~ "badge-warning"
+      assert classes["danger"] =~ "badge-error"
+      assert classes["info"] =~ "badge-info"
+      assert classes["neutral"] =~ "badge-neutral"
+
+      assert classes |> Map.values() |> Enum.uniq() |> length() == 5,
+             "every tone must be visually distinguishable"
+    end
+
+    test "danger means the same thing on a badge as on a button" do
+      assigns = %{}
+      badge = root_class(rendered_to_string(~H|<CoreComponents.badge tone="danger">x</CoreComponents.badge>|))
+      button = root_class(rendered_to_string(~H|<CoreComponents.button variant="danger">x</CoreComponents.button>|))
+
+      assert badge =~ "error"
+      assert button =~ "error"
+    end
+
+    test "variant and size are enumerated, not leaked through class" do
+      assigns = %{}
+
+      assert root_class(rendered_to_string(~H|<CoreComponents.badge variant="outline">x</CoreComponents.badge>|)) =~
+               "badge-outline"
+
+      assert root_class(rendered_to_string(~H|<CoreComponents.badge size="lg">x</CoreComponents.badge>|)) =~
+               "badge-lg"
+
+      # solid is the absence of a style modifier
+      refute root_class(rendered_to_string(~H|<CoreComponents.badge variant="solid">x</CoreComponents.badge>|)) =~
+               "badge-soft"
+    end
+  end
+
+  describe "modal" do
+    test "visibility is driven by the server, not the client" do
+      assigns = %{}
+
+      closed = rendered_to_string(~H|<CoreComponents.modal id="m">Body</CoreComponents.modal>|)
+      open = rendered_to_string(~H|<CoreComponents.modal id="m" show>Body</CoreComponents.modal>|)
+
+      refute root_class(closed) =~ "modal-open"
+      assert root_class(open) =~ "modal-open"
+      assert open =~ ~s|aria-modal="true"|
+    end
+
+    test "one handler covers all three ways out" do
+      assigns = %{}
+
+      html =
+        rendered_to_string(
+          ~H|<CoreComponents.modal id="m" show on_cancel="close">Body</CoreComponents.modal>|
+        )
+
+      # close button, backdrop, and Escape
+      assert html =~ "modal-backdrop"
+      assert html =~ ~s|aria-label="Close"|
+      assert html =~ "phx-window-keydown"
+      assert html =~ ~s|phx-key="escape"|
+      assert count(html, ~s|phx-click="close"|) == 2
+    end
+
+    test "a closed dialog does not listen for Escape" do
+      # Otherwise every closed modal on the page competes for the key.
+      assigns = %{}
+
+      html =
+        rendered_to_string(
+          ~H|<CoreComponents.modal id="m" on_cancel="close">Body</CoreComponents.modal>|
+        )
+
+      refute html =~ "phx-window-keydown=\"close\""
+    end
+
+    test "dismissable={false} removes every exit at once" do
+      assigns = %{}
+
+      html =
+        rendered_to_string(~H"""
+        <CoreComponents.modal id="m" show dismissable={false} on_cancel="close">
+          Body
+        </CoreComponents.modal>
+        """)
+
+      refute html =~ "modal-backdrop"
+      refute html =~ ~s|aria-label="Close"|
+      refute html =~ "phx-window-keydown=\"close\""
+    end
+
+    test "the title is announced as the dialog's label" do
+      assigns = %{}
+
+      html =
+        rendered_to_string(~H"""
+        <CoreComponents.modal id="confirm" show>
+          <:title>Delete workspace</:title>
+          Body
+        </CoreComponents.modal>
+        """)
+
+      assert html =~ ~s|aria-labelledby="confirm-title"|
+      assert html =~ ~s|id="confirm-title"|
+    end
+
+    test "static renders in flow so a preview cannot cover the page" do
+      # `.modal` is position: fixed — a preview card rendering one would
+      # overlay the whole design page.
+      assigns = %{}
+
+      html =
+        rendered_to_string(~H"""
+        <CoreComponents.modal id="m" static>
+          <:title>In a preview</:title>
+          Body
+        </CoreComponents.modal>
+        """)
+
+      assert root_class(html) =~ "modal-box"
+      refute root_class(html) =~ ~r/\bmodal\b(?!-box)/
+      refute html =~ "modal-backdrop"
+      assert html =~ "In a preview"
+
+      # daisy hides modal-box until a modal-open parent reveals it, so a
+      # standalone box renders present-but-invisible without these.
+      assert root_class(html) =~ "opacity-100"
+      assert root_class(html) =~ "scale-100"
+    end
+  end
+
+  describe "list" do
+    test "the title treatment can be replaced, which is why it went unused" do
+      assigns = %{}
+
+      default =
+        rendered_to_string(~H"""
+        <CoreComponents.list>
+          <:item title="Status">Active</:item>
+        </CoreComponents.list>
+        """)
+
+      custom =
+        rendered_to_string(~H"""
+        <CoreComponents.list title_class="font-mono text-xs uppercase">
+          <:item title="Status">Active</:item>
+        </CoreComponents.list>
+        """)
+
+      assert default =~ "font-bold"
+      assert custom =~ "font-mono text-xs uppercase"
+      refute custom =~ "font-bold"
+    end
+  end
+
   describe "theme_toggle" do
     test "renders three segments wired to the phx:set-theme event" do
       assigns = %{}

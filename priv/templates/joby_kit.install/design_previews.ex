@@ -26,21 +26,21 @@ defmodule <%= @web_module %>.DesignPreviews do
   def button_preview(assigns) do
     ~H"""
     <div class="flex flex-col gap-3">
-      <div class="flex flex-wrap items-center gap-2">
+      <.demo_row>
         <CoreComponents.button>Default</CoreComponents.button>
         <CoreComponents.button variant="primary">Primary</CoreComponents.button>
         <CoreComponents.button variant="neutral">Neutral</CoreComponents.button>
         <CoreComponents.button variant="ghost">Ghost</CoreComponents.button>
         <CoreComponents.button variant="danger">Delete</CoreComponents.button>
-      </div>
-      <div class="flex flex-wrap items-center gap-2">
+      </.demo_row>
+      <.demo_row>
         <CoreComponents.button size="xs">XS</CoreComponents.button>
         <CoreComponents.button size="sm">Small</CoreComponents.button>
         <CoreComponents.button size="lg">Large</CoreComponents.button>
         <CoreComponents.button shape="circle" variant="ghost" aria-label="Close">
           <CoreComponents.icon name="hero-x-mark" class="size-4" />
         </CoreComponents.button>
-      </div>
+      </.demo_row>
     </div>
     """
   end
@@ -145,6 +145,49 @@ defmodule <%= @web_module %>.DesignPreviews do
     """
   end
 
+  def badge_preview(assigns) do
+    ~H"""
+    <div class="flex flex-col gap-3">
+      <.demo_row>
+        <CoreComponents.badge tone="ok">Healthy</CoreComponents.badge>
+        <CoreComponents.badge tone="warn">Degraded</CoreComponents.badge>
+        <CoreComponents.badge tone="danger">Failed</CoreComponents.badge>
+        <CoreComponents.badge tone="info">Queued</CoreComponents.badge>
+        <CoreComponents.badge>Unknown</CoreComponents.badge>
+      </.demo_row>
+      <.demo_row>
+        <CoreComponents.badge tone="ok" variant="solid">Solid</CoreComponents.badge>
+        <CoreComponents.badge tone="ok" variant="outline">Outline</CoreComponents.badge>
+        <CoreComponents.badge tone="ok" size="lg">Large</CoreComponents.badge>
+      </.demo_row>
+    </div>
+    """
+  end
+
+  def eyebrow_preview(assigns) do
+    ~H"""
+    <div>
+      <CoreComponents.eyebrow>Workspace</CoreComponents.eyebrow>
+      <p class="text-sm text-base-content/70">Sits above a heading or leads a data pair.</p>
+    </div>
+    """
+  end
+
+  def modal_preview(assigns) do
+    ~H"""
+    <CoreComponents.modal id="modal-preview" static>
+      <:title>Delete workspace</:title>
+      <p class="text-sm text-base-content/70">
+        This removes every peer and session in it. It cannot be undone.
+      </p>
+      <:actions>
+        <CoreComponents.button variant="ghost" size="sm">Keep it</CoreComponents.button>
+        <CoreComponents.button variant="danger" size="sm">Delete</CoreComponents.button>
+      </:actions>
+    </CoreComponents.modal>
+    """
+  end
+
   def theme_toggle_preview(assigns) do
     ~H"""
     <div class="flex items-center gap-3">
@@ -192,4 +235,17 @@ defmodule <%= @web_module %>.DesignPreviews do
     </div>
     """
   end
+  # A row of demo items — the one layout that genuinely recurs in a
+  # previews file. Private and unmarked, so it is scaffolding rather than
+  # a component: no data-component, nothing to register.
+  slot :inner_block, required: true
+
+  defp demo_row(assigns) do
+    ~H"""
+    <div class="flex flex-wrap items-center gap-2">
+      {render_slot(@inner_block)}
+    </div>
+    """
+  end
+
 end

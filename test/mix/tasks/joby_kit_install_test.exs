@@ -18,7 +18,7 @@ defmodule Mix.Tasks.JobyKit.InstallTest do
       # All nine, not just the obvious five: header/list/table/flash_group were
       # shipped-but-unregistered through 0.2.2, so agents following the build
       # order couldn't discover half the kit.
-      for name <- ~w(button card icon input flash flash_group header list table theme_toggle) do
+      for name <- ~w(button badge card icon input eyebrow flash flash_group header list modal table theme_toggle) do
         assert manifest =~ "component CoreComponents, :#{name},",
                "expected #{name} to be registered in the generated manifest"
       end
@@ -57,6 +57,9 @@ defmodule Mix.Tasks.JobyKit.InstallTest do
       assert previews =~ "def table_preview(assigns)"
       assert previews =~ "def theme_toggle_preview(assigns)"
       assert previews =~ "def simple_nav_preview(assigns)"
+      assert previews =~ "def badge_preview(assigns)"
+      assert previews =~ "def eyebrow_preview(assigns)"
+      assert previews =~ "def modal_preview(assigns)"
 
       design_live = File.read!("lib/demo_app_web/live/design_system_live.ex")
       assert design_live =~ "defmodule DemoAppWeb.DesignSystemLive do"

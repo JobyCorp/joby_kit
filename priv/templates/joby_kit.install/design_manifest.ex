@@ -43,6 +43,12 @@ defmodule <%= @web_module %>.DesignManifest do
     summary: "Standard text button, with link auto-detection via :rest.",
     preview: &DesignPreviews.button_preview/1
 
+  component CoreComponents, :badge,
+    category: :core,
+    daisy_basis: "badge",
+    summary: "Status chip with a semantic tone (neutral/ok/warn/danger/info).",
+    preview: &DesignPreviews.badge_preview/1
+
   component CoreComponents, :card,
     category: :core,
     daisy_basis: "card",
@@ -60,6 +66,11 @@ defmodule <%= @web_module %>.DesignManifest do
     daisy_basis: "input / select / textarea / checkbox",
     summary: "Form input with label and error rendering. Supports all standard input types.",
     preview: &DesignPreviews.input_preview/1
+
+  component CoreComponents, :eyebrow,
+    category: :core,
+    summary: "Small uppercase label. Used by card and header for their :eyebrow slots.",
+    preview: &DesignPreviews.eyebrow_preview/1
 
   component CoreComponents, :flash,
     category: :core,
@@ -87,6 +98,12 @@ defmodule <%= @web_module %>.DesignManifest do
     daisy_basis: "list",
     summary: "Title/value pairs rendered as a daisyUI list.",
     preview: &DesignPreviews.list_preview/1
+
+  component CoreComponents, :modal,
+    category: :core,
+    daisy_basis: "modal",
+    summary: "Server-driven dialog. One on_cancel covers button, backdrop, and Escape.",
+    preview: &DesignPreviews.modal_preview/1
 
   component CoreComponents, :table,
     category: :core,
@@ -174,6 +191,14 @@ defmodule <%= @web_module %>.DesignManifest do
       checkbox: %{
         wrapper: "<.input type=\"checkbox\">",
         anchor: "#jobykit-component-jobykit-corecomponents-input"
+      },
+      badge: %{
+        wrapper: "<.badge>",
+        anchor: "#jobykit-component-jobykit-corecomponents-badge"
+      },
+      modal: %{
+        wrapper: "<.modal>",
+        anchor: "#jobykit-component-jobykit-corecomponents-modal"
       },
       theme_controller: %{
         wrapper: "<.theme_toggle>",

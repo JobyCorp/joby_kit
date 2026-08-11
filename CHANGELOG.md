@@ -102,6 +102,43 @@ Two new rules, both from demonstrated harm in consumer apps:
   but nothing checked it: one app pasted the same header class string
   ten times and linted clean.
 
+### New components
+
+Three of the four components consumers had built for themselves. The
+fourth, an icon button, is covered by `button/1`'s new `shape`.
+
+* **`badge/1`** — status chip with a semantic tone
+  (`neutral | ok | warn | danger | info`). One app maintained five
+  separate tone-to-class functions mapping the same states to
+  border+bg+text triples, and had copied one of them verbatim into a
+  second file — precisely the drift the kit's guidance warns about.
+  `neutral` and `danger` deliberately mean the same thing here as on
+  `button/1`.
+* **`eyebrow/1`** — the small uppercase label. This was the single
+  most-duplicated string in the fleet: 326 hand-typed instances in one
+  app, with letter-spacing drifting across nine values and six font
+  sizes. `card/1` and `header/1` now render their `:eyebrow` slots
+  through it, so the kit stops carrying three copies of the string
+  itself.
+* **`modal/1`** — server-driven dialog. Two apps built one and both hit
+  the same three problems, so those are what it solves: visibility is a
+  plain assign rather than client state, so it can't disagree with the
+  LiveView that owns it; one `on_cancel` covers the close button, the
+  backdrop, and Escape, instead of the separate close/dismiss handlers
+  apps ended up writing; and `static` renders the box in flow for design
+  pages, since `.modal` is `position: fixed` and would otherwise cover
+  the page it's being previewed on.
+* **`list/1` loosened rather than demoted.** It had zero uses in one app
+  and was bypassed in another because the forced `font-bold` title
+  couldn't be overridden; `title_class` replaces it. It stays a `ul`
+  because daisy's `list` requires that shape. The starter page's build
+  order now uses it.
+
+Registering these surfaced a small proof the new linter works: the
+shipped previews template repeated one layout string four times and
+tripped `:duplicated_class_string` on a fresh install. Extracted to a
+private helper — a fresh install lints clean again.
+
 ### Starter app and theming
 
 The generated app is the kit's own worked example, so it has to be

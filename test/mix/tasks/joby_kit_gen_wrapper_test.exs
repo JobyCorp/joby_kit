@@ -6,25 +6,25 @@ defmodule Mix.Tasks.JobyKit.Gen.WrapperTest do
   describe "core wrapper without --daisy" do
     test "scaffolds component, manifest entry, and preview", %{tmp_dir: tmp_dir} do
       in_installed_project(tmp_dir, fn ->
-        Mix.Tasks.JobyKit.Gen.Wrapper.run(["modal"])
+        Mix.Tasks.JobyKit.Gen.Wrapper.run(["metric_tile"])
 
         core = File.read!("lib/demo_app_web/components/core_components.ex")
-        assert core =~ "def modal(assigns)"
-        assert core =~ ~s|data-component="DemoAppWeb.CoreComponents.modal"|
+        assert core =~ "def metric_tile(assigns)"
+        assert core =~ ~s|data-component="DemoAppWeb.CoreComponents.metric_tile"|
         assert core =~ "attr :rest, :global"
         assert core =~ "slot :inner_block"
 
         manifest = File.read!("lib/demo_app_web/design_manifest.ex")
-        assert manifest =~ "component(DemoAppWeb.CoreComponents, :modal,"
+        assert manifest =~ "component(DemoAppWeb.CoreComponents, :metric_tile,"
         assert manifest =~ "category: :core"
-        assert manifest =~ "preview: &DesignPreviews.modal_preview/1"
+        assert manifest =~ "preview: &DesignPreviews.metric_tile_preview/1"
 
         previews = File.read!("lib/demo_app_web/design_previews.ex")
-        assert previews =~ "def modal_preview(assigns)"
+        assert previews =~ "def metric_tile_preview(assigns)"
         # CoreComponents is imported via `use <App>Web, :html` — preview
         # uses the period-form, not the aliased module path.
-        assert previews =~ "<.modal>"
-        refute previews =~ "<CoreComponents.modal>"
+        assert previews =~ "<.metric_tile>"
+        refute previews =~ "<CoreComponents.metric_tile>"
       end)
     end
   end
@@ -32,7 +32,7 @@ defmodule Mix.Tasks.JobyKit.Gen.WrapperTest do
   describe "core wrapper with --daisy" do
     test "uses the daisy class as the root class and the daisy_basis", %{tmp_dir: tmp_dir} do
       in_installed_project(tmp_dir, fn ->
-        Mix.Tasks.JobyKit.Gen.Wrapper.run(["modal", "--daisy", "modal"])
+        Mix.Tasks.JobyKit.Gen.Wrapper.run(["metric_tile", "--daisy", "modal"])
 
         core = File.read!("lib/demo_app_web/components/core_components.ex")
         assert core =~ ~s|class="modal"|
@@ -59,7 +59,7 @@ defmodule Mix.Tasks.JobyKit.Gen.WrapperTest do
     test "rejects unknown daisy ids", %{tmp_dir: tmp_dir} do
       in_installed_project(tmp_dir, fn ->
         assert_raise Mix.Error, ~r/unknown --daisy "fizzbuzz"/, fn ->
-          Mix.Tasks.JobyKit.Gen.Wrapper.run(["modal", "--daisy", "fizzbuzz"])
+          Mix.Tasks.JobyKit.Gen.Wrapper.run(["metric_tile", "--daisy", "fizzbuzz"])
         end
       end)
     end
@@ -126,10 +126,10 @@ defmodule Mix.Tasks.JobyKit.Gen.WrapperTest do
   describe "manifest entry placement" do
     test "inserts before def daisy_overrides", %{tmp_dir: tmp_dir} do
       in_installed_project(tmp_dir, fn ->
-        Mix.Tasks.JobyKit.Gen.Wrapper.run(["modal"])
+        Mix.Tasks.JobyKit.Gen.Wrapper.run(["metric_tile"])
 
         manifest = File.read!("lib/demo_app_web/design_manifest.ex")
-        modal_pos = :binary.match(manifest, "component(DemoAppWeb.CoreComponents, :modal,") |> elem(0)
+        modal_pos = :binary.match(manifest, "component(DemoAppWeb.CoreComponents, :metric_tile,") |> elem(0)
         overrides_pos = :binary.match(manifest, "def daisy_overrides do") |> elem(0)
         assert modal_pos < overrides_pos
       end)
@@ -139,10 +139,10 @@ defmodule Mix.Tasks.JobyKit.Gen.WrapperTest do
   describe "duplicate detection" do
     test "refuses to overwrite an existing function", %{tmp_dir: tmp_dir} do
       in_installed_project(tmp_dir, fn ->
-        Mix.Tasks.JobyKit.Gen.Wrapper.run(["modal"])
+        Mix.Tasks.JobyKit.Gen.Wrapper.run(["metric_tile"])
 
-        assert_raise Mix.Error, ~r/function modal\/1 already exists/, fn ->
-          Mix.Tasks.JobyKit.Gen.Wrapper.run(["modal"])
+        assert_raise Mix.Error, ~r/function metric_tile\/1 already exists/, fn ->
+          Mix.Tasks.JobyKit.Gen.Wrapper.run(["metric_tile"])
         end
       end)
     end
@@ -156,12 +156,12 @@ defmodule Mix.Tasks.JobyKit.Gen.WrapperTest do
           File.read!("lib/demo_app_web/design_manifest.ex")
           |> String.replace(
             "  # ---------------------------------------------------------------------- core",
-            "  component(CoreComponents, :modal, category: :core, summary: \"x\", preview: &DesignPreviews.modal_preview/1)\n\n  # ---------------------------------------------------------------------- core"
+            "  component(CoreComponents, :metric_tile, category: :core, summary: \"x\", preview: &DesignPreviews.metric_tile_preview/1)\n\n  # ---------------------------------------------------------------------- core"
           )
         )
 
-        assert_raise Mix.Error, ~r/manifest entry for CoreComponents.modal already exists/, fn ->
-          Mix.Tasks.JobyKit.Gen.Wrapper.run(["modal"])
+        assert_raise Mix.Error, ~r/manifest entry for CoreComponents.metric_tile already exists/, fn ->
+          Mix.Tasks.JobyKit.Gen.Wrapper.run(["metric_tile"])
         end
       end)
     end
@@ -200,7 +200,7 @@ defmodule Mix.Tasks.JobyKit.Gen.WrapperTest do
     # inserts is syntactically valid. Insertion is done by regex against
     # the module's closing `end`, so a mismatch corrupts the file.
     in_installed_project(tmp_dir, fn ->
-      Mix.Tasks.JobyKit.Gen.Wrapper.run(["modal", "--daisy", "modal"])
+      Mix.Tasks.JobyKit.Gen.Wrapper.run(["metric_tile", "--daisy", "modal"])
       Mix.Tasks.JobyKit.Gen.Wrapper.run(["chat_panel", "--category", "composite"])
 
       for path <- Path.wildcard("lib/demo_app_web/**/*.ex") do

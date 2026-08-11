@@ -27,13 +27,17 @@ defmodule JobyKit.CoreComponents do
   ## Components
 
     * `flash/1`, `flash_group/1` — toast-style flashes
-    * `button/1` — text/link button with variant + size
+    * `badge/1` — status chip with a semantic tone
+    * `button/1` — text/link button with variant, size, and shape
     * `card/1` — content surface with eyebrow/title/actions slots
+    * `eyebrow/1` — small uppercase label
     * `header/1` — page or section header
     * `icon/1` — Heroicon span
     * `input/1` — form input (text, email, select, textarea, checkbox…)
     * `list/1` — generic list
+    * `modal/1` — server-driven dialog
     * `table/1` — table with col/action slots, stream-aware
+    * `theme_toggle/1` — system / light / dark control
 
   Plus the JS helpers `show/2`, `hide/2`, and the i18n-free
   `translate_error/1`.
@@ -150,6 +154,94 @@ defmodule JobyKit.CoreComponents do
     end
   end
 
+  # ------------------------------------------------------------ eyebrow
+
+  @doc """
+  Small uppercase label that sits above a heading or leads a data pair.
+
+      <.eyebrow>Workspace</.eyebrow>
+
+  This is the most-duplicated string in the fleet: one app carried 326
+  hand-typed instances of the same mono-uppercase treatment, with letter
+  spacing drifting across nine values and six font sizes because every
+  one was written by hand. One definition, one look.
+
+  `card/1` and `header/1` render their `:eyebrow` slots through this, so
+  the three stay identical by construction.
+  """
+  attr :class, :any, default: nil
+  attr :rest, :global
+  slot :inner_block, required: true
+
+  def eyebrow(assigns) do
+    ~H"""
+    <p
+      data-component="JobyKit.CoreComponents.eyebrow"
+      class={[
+        "text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-base-content/55",
+        @class
+      ]}
+      {@rest}
+    >
+      {render_slot(@inner_block)}
+    </p>
+    """
+  end
+
+  # -------------------------------------------------------------- badge
+
+  @badge_tones %{
+    "neutral" => "badge-neutral",
+    "ok" => "badge-success",
+    "warn" => "badge-warning",
+    "danger" => "badge-error",
+    "info" => "badge-info"
+  }
+
+  @doc """
+  Status chip with a semantic tone.
+
+      <.badge tone="ok">Healthy</.badge>
+      <.badge tone="danger" variant="solid">Failed</.badge>
+
+  `tone` names the *state*, not a colour, so the palette stays consistent
+  across apps and themes. It deliberately shares `neutral` and `danger`
+  with `button/1` — the same word means the same thing wherever it
+  appears.
+
+  This exists because it was missing: one app maintained five separate
+  tone-to-class functions mapping the same ok/warn/critical/neutral set
+  to border+bg+text triples, and one of them had been copied verbatim
+  into a second file — the exact drift the kit's own guidance warns
+  about.
+  """
+  attr :tone, :string, values: ~w(neutral ok warn danger info), default: "neutral"
+  attr :variant, :string, values: ~w(soft solid outline), default: "soft"
+  attr :size, :string, values: ~w(xs sm md lg), default: "sm"
+  attr :class, :any, default: nil
+  attr :rest, :global
+  slot :inner_block, required: true
+
+  def badge(assigns) do
+    variants = %{"soft" => "badge-soft", "solid" => nil, "outline" => "badge-outline"}
+    sizes = %{"xs" => "badge-xs", "sm" => "badge-sm", "md" => nil, "lg" => "badge-lg"}
+
+    assigns =
+      assign(assigns, :class_list, [
+        "badge",
+        Map.fetch!(@badge_tones, assigns.tone),
+        Map.fetch!(variants, assigns.variant),
+        Map.fetch!(sizes, assigns.size),
+        assigns.class
+      ])
+
+    ~H"""
+    <span data-component="JobyKit.CoreComponents.badge" class={@class_list} {@rest}>
+      {render_slot(@inner_block)}
+    </span>
+    """
+  end
+
   # --------------------------------------------------------------- card
 
   @doc """
@@ -213,12 +305,7 @@ defmodule JobyKit.CoreComponents do
         @prose && "text-sm leading-relaxed text-base-content/70",
         @body_class
       ]}>
-        <p
-          :if={@eyebrow != []}
-          class="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-base-content/55"
-        >
-          {render_slot(@eyebrow)}
-        </p>
+        <.eyebrow :if={@eyebrow != []}>{render_slot(@eyebrow)}</.eyebrow>
         <h3 :if={@title != []} class="card-title text-lg font-semibold leading-tight">
           {render_slot(@title)}
         </h3>
@@ -274,12 +361,7 @@ defmodule JobyKit.CoreComponents do
       {@rest}
     >
       <div>
-        <p
-          :if={@eyebrow != []}
-          class="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-base-content/55"
-        >
-          {render_slot(@eyebrow)}
-        </p>
+        <.eyebrow :if={@eyebrow != []}>{render_slot(@eyebrow)}</.eyebrow>
         <.dynamic_tag tag_name={@level} class={@title_class || @size_class}>
           {render_slot(@inner_block)}
         </.dynamic_tag>
@@ -303,18 +385,28 @@ defmodule JobyKit.CoreComponents do
       </.list>
   """
   attr :class, :any, default: nil
+
+  attr :title_class, :any,
+    default: nil,
+    doc: "Replaces the title's type treatment. The default is `font-bold`."
+
   attr :rest, :global
 
   slot :item, required: true do
     attr :title, :string, required: true
   end
 
+  # `title_class` replaces rather than appends: the bold default was the
+  # reason this component went unused — an app whose lists are mono
+  # labels could not get out from under it, so it hand-rolled the markup
+  # instead. daisy's `list` wants `ul`/`li.list-row`, so the element
+  # stays a list even though the content is title/value pairs.
   def list(assigns) do
     ~H"""
     <ul data-component="JobyKit.CoreComponents.list" class={["list", @class]} {@rest}>
       <li :for={item <- @item} class="list-row">
         <div class="list-col-grow">
-          <div class="font-bold">{item.title}</div>
+          <div class={@title_class || "font-bold"}>{item.title}</div>
           <div>{render_slot(item)}</div>
         </div>
       </li>
@@ -437,6 +529,146 @@ defmodule JobyKit.CoreComponents do
   defp empty_rows?(%Phoenix.LiveView.LiveStream{inserts: inserts}), do: inserts == []
   defp empty_rows?(rows) when is_list(rows), do: rows == []
   defp empty_rows?(rows), do: Enum.empty?(rows)
+
+  # -------------------------------------------------------------- modal
+
+  @doc """
+  Dialog whose visibility is driven by the server.
+
+      <.modal id="confirm" show={@confirming?} on_cancel={JS.push("cancel")}>
+        <:title>Delete workspace</:title>
+        This removes every peer and session in it. It cannot be undone.
+        <:actions>
+          <.button variant="ghost" phx-click={JS.push("cancel")}>Keep it</.button>
+          <.button variant="danger" phx-click={JS.push("delete")}>Delete</.button>
+        </:actions>
+      </.modal>
+
+  `show` is a plain assign rather than client-side state, so the dialog
+  can't disagree with the LiveView that owns it, and reconnecting
+  restores the right thing.
+
+  ## Dismissal
+
+  `on_cancel` runs for all three ways out — the close button, the
+  backdrop, and Escape — so there is one path to handle instead of the
+  separate close/dismiss handlers apps ended up writing. The keydown
+  listener is only attached while the dialog is open, so closed dialogs
+  on the page cost nothing and can't swallow the key.
+
+  Set `dismissable={false}` for a dialog that must be resolved through
+  its actions; that drops the close button, the backdrop handler, and
+  the Escape binding together.
+
+  ## Previews
+
+  `.modal` is `position: fixed`, so rendering one inside a preview card
+  would cover the page. `static` renders just the box, in flow, for
+  design pages and documentation.
+  """
+  attr :id, :string, required: true
+  attr :show, :boolean, default: false
+  attr :on_cancel, :any, default: nil, doc: "JS command or event run on any dismissal."
+  attr :dismissable, :boolean, default: true
+  attr :static, :boolean, default: false, doc: "Render in flow instead of as an overlay."
+  attr :class, :any, default: nil
+  attr :box_class, :any, default: nil, doc: "Utilities for the modal box."
+  attr :rest, :global
+
+  slot :title
+  slot :inner_block, required: true
+  slot :actions
+
+  # daisy's `modal-box` is `opacity: 0; scale: .95` until a `modal-open`
+  # parent reveals it, so a box standing on its own needs both undone —
+  # otherwise it renders present-but-invisible.
+  def modal(%{static: true} = assigns) do
+    ~H"""
+    <div
+      id={@id}
+      data-component="JobyKit.CoreComponents.modal"
+      class={["modal-box relative opacity-100 scale-100", @box_class, @class]}
+      {@rest}
+    >
+      <.modal_body
+        id={@id}
+        title={@title}
+        body={@inner_block}
+        actions={@actions}
+        dismissable={false}
+        on_cancel={nil}
+      />
+    </div>
+    """
+  end
+
+  def modal(assigns) do
+    ~H"""
+    <div
+      id={@id}
+      data-component="JobyKit.CoreComponents.modal"
+      class={["modal", @show && "modal-open", @class]}
+      role="dialog"
+      aria-modal={@show && "true"}
+      aria-labelledby={@title != [] && "#{@id}-title"}
+      phx-window-keydown={@show && @dismissable && @on_cancel}
+      phx-key="escape"
+      {@rest}
+    >
+      <div class={["modal-box relative", @box_class]}>
+        <.modal_body
+          id={@id}
+          title={@title}
+          body={@inner_block}
+          actions={@actions}
+          dismissable={@dismissable}
+          on_cancel={@on_cancel}
+        />
+      </div>
+      <div
+        :if={@dismissable}
+        class="modal-backdrop"
+        phx-click={@on_cancel}
+        aria-hidden="true"
+      />
+    </div>
+    """
+  end
+
+  # Slots are forwarded as plain lists so both clauses share one body.
+  attr :id, :string, required: true
+  attr :dismissable, :boolean, required: true
+  attr :on_cancel, :any, required: true
+  attr :title, :list, default: []
+  attr :body, :list, default: []
+  attr :actions, :list, default: []
+
+  defp modal_body(assigns) do
+    ~H"""
+    <.button
+      :if={@dismissable}
+      type="button"
+      shape="circle"
+      variant="ghost"
+      size="sm"
+      class="absolute right-3 top-3"
+      phx-click={@on_cancel}
+      aria-label="Close"
+    >
+      <.icon name="hero-x-mark" class="size-4" />
+    </.button>
+
+    <h3 :if={@title != []} id={"#{@id}-title"} class="text-lg font-semibold leading-tight">
+      {render_slot(@title)}
+    </h3>
+
+    {render_slot(@body)}
+
+    <div :if={@actions != []} class="modal-action">
+      {render_slot(@actions)}
+    </div>
+    """
+  end
 
   # -------------------------------------------------------- theme_toggle
 
