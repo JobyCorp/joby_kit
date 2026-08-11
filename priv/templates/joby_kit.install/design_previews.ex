@@ -145,6 +145,34 @@ defmodule <%= @web_module %>.DesignPreviews do
     """
   end
 
+  def theme_toggle_preview(assigns) do
+    ~H"""
+    <div class="flex items-center gap-3">
+      <CoreComponents.theme_toggle />
+      <span class="text-xs text-base-content/60">Try it — the whole page follows.</span>
+    </div>
+    """
+  end
+
+  def simple_nav_preview(assigns) do
+    ~H"""
+    <div class="rounded-box border border-base-300 bg-base-100 px-2">
+      <JobyKit.NavComponent.simple_nav
+        brand="Preview"
+        active="design"
+        links={[
+          %{key: "home", label: "Home", href: "/"},
+          %{key: "design", label: "Design", href: "/design"}
+        ]}
+      >
+        <:actions>
+          <CoreComponents.theme_toggle />
+        </:actions>
+      </JobyKit.NavComponent.simple_nav>
+    </div>
+    """
+  end
+
   def empty_state_preview(assigns) do
     ~H"""
     <div class="grid gap-4 sm:grid-cols-2">

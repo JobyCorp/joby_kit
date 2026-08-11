@@ -16,6 +16,7 @@ defmodule <%= @web_module %>.DesignManifest do
   use JobyKit.Manifest
 
   alias JobyKit.CoreComponents
+  alias JobyKit.NavComponent
   alias <%= @web_module %>.CompositeComponents
   alias <%= @web_module %>.DesignPreviews
 
@@ -93,6 +94,18 @@ defmodule <%= @web_module %>.DesignManifest do
     summary: "Column-slot table. Accepts a plain list or a LiveView stream.",
     preview: &DesignPreviews.table_preview/1
 
+  component CoreComponents, :theme_toggle,
+    category: :core,
+    daisy_basis: "theme-controller",
+    summary: "Segmented system / light / dark control. Pairs with the root-layout theme script.",
+    preview: &DesignPreviews.theme_toggle_preview/1
+
+  component NavComponent, :simple_nav,
+    category: :core,
+    daisy_basis: "navbar",
+    summary: "App navbar with active state and an :actions slot. Draws no surface of its own.",
+    preview: &DesignPreviews.simple_nav_preview/1
+
   # ----------------------------------------------------------------- composite
   # `empty_state` is the worked example — a real composite that bundles
   # `<.icon>` + a heading + an optional action slot. Use it as the
@@ -161,6 +174,14 @@ defmodule <%= @web_module %>.DesignManifest do
       checkbox: %{
         wrapper: "<.input type=\"checkbox\">",
         anchor: "#jobykit-component-jobykit-corecomponents-input"
+      },
+      theme_controller: %{
+        wrapper: "<.theme_toggle>",
+        anchor: "#jobykit-component-jobykit-corecomponents-theme_toggle"
+      },
+      navbar: %{
+        wrapper: "<.simple_nav>",
+        anchor: "#jobykit-component-jobykit-navcomponent-simple_nav"
       }
     }
   end

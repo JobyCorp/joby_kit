@@ -18,7 +18,7 @@ defmodule Mix.Tasks.JobyKit.InstallTest do
       # All nine, not just the obvious five: header/list/table/flash_group were
       # shipped-but-unregistered through 0.2.2, so agents following the build
       # order couldn't discover half the kit.
-      for name <- ~w(button card icon input flash flash_group header list table) do
+      for name <- ~w(button card icon input flash flash_group header list table theme_toggle) do
         assert manifest =~ "component CoreComponents, :#{name},",
                "expected #{name} to be registered in the generated manifest"
       end
@@ -29,6 +29,10 @@ defmodule Mix.Tasks.JobyKit.InstallTest do
       assert manifest =~ ~s|"#jobykit-component-jobykit-corecomponents-card"|
       assert manifest =~ ~s|"#jobykit-component-jobykit-corecomponents-table"|
       assert manifest =~ ~s|"#jobykit-component-jobykit-corecomponents-flash_group"|
+      # simple_nav lives in NavComponent, so it needs its own alias + anchor.
+      assert manifest =~ "alias JobyKit.NavComponent"
+      assert manifest =~ "component NavComponent, :simple_nav,"
+      assert manifest =~ ~s|"#jobykit-component-jobykit-navcomponent-simple_nav"|
 
       # Every registered entry that declares a preview must have one defined,
       # or /design 500s on the missing function.
@@ -51,6 +55,8 @@ defmodule Mix.Tasks.JobyKit.InstallTest do
       assert previews =~ "def header_preview(assigns)"
       assert previews =~ "def list_preview(assigns)"
       assert previews =~ "def table_preview(assigns)"
+      assert previews =~ "def theme_toggle_preview(assigns)"
+      assert previews =~ "def simple_nav_preview(assigns)"
 
       design_live = File.read!("lib/demo_app_web/live/design_system_live.ex")
       assert design_live =~ "defmodule DemoAppWeb.DesignSystemLive do"

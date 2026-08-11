@@ -110,6 +110,53 @@ defmodule JobyKit.NavComponentTest do
       assert html =~ "navbar"
       assert html =~ "sticky top-0"
     end
+
+    test "draws no surface of its own" do
+      # The nav used to carry `bg-base-100 border-b`. Dropped inside a
+      # layout's own sticky bar, the two disagreed: the bar's translucent
+      # background showed at the edges while the nav painted an opaque
+      # strip only as wide as its max-width container — a visible seam.
+      # Surface belongs to the container.
+      assigns = %{}
+      html = rendered_to_string(~H|<NavComponent.simple_nav />|)
+
+      refute root_class(html) =~ "bg-base-"
+      refute root_class(html) =~ "border-b"
+    end
+
+    test "accepts global attributes, as the contract requires" do
+      assigns = %{}
+      html = rendered_to_string(~H|<NavComponent.simple_nav id="main-nav" aria-label="Primary" />|)
+
+      assert html =~ ~s|id="main-nav"|
+      assert html =~ ~s|aria-label="Primary"|
+    end
+
+    test "the actions slot holds trailing controls" do
+      assigns = %{}
+
+      html =
+        rendered_to_string(~H"""
+        <NavComponent.simple_nav>
+          <:actions><span id="trailing">x</span></:actions>
+        </NavComponent.simple_nav>
+        """)
+
+      assert html =~ ~s|id="trailing"|
+    end
+
+    test "the current link is marked for assistive tech, not just visually" do
+      assigns = %{}
+      html = rendered_to_string(~H|<NavComponent.simple_nav active="design" />|)
+
+      assert html =~ ~s|aria-current="page"|
+      assert count(html, ~s|aria-current="page"|) == 1
+    end
+  end
+
+  defp root_class(html) do
+    [_, class] = Regex.run(~r/class="([^"]*)"/, html)
+    class
   end
 
   defp count(haystack, needle), do: length(String.split(haystack, needle)) - 1

@@ -691,6 +691,53 @@ defmodule JobyKit.CoreComponentsTest do
     end
   end
 
+  describe "theme_toggle" do
+    test "renders three segments wired to the phx:set-theme event" do
+      assigns = %{}
+      html = rendered_to_string(~H|<CoreComponents.theme_toggle />|)
+
+      for theme <- ~w(system light dark) do
+        assert html =~ ~s|data-phx-theme="#{theme}"|
+      end
+
+      assert html =~ "phx:set-theme"
+      assert html =~ ~s|data-component="JobyKit.CoreComponents.theme_toggle"|
+    end
+
+    test "every segment is a kit button, not raw markup" do
+      assigns = %{}
+      html = rendered_to_string(~H|<CoreComponents.theme_toggle />|)
+
+      assert count(html, ~s|data-component="JobyKit.CoreComponents.button"|) == 3
+    end
+
+    test "icon-only segments carry accessible names" do
+      assigns = %{}
+      html = rendered_to_string(~H|<CoreComponents.theme_toggle />|)
+
+      assert html =~ ~s|aria-label="Match system theme"|
+      assert html =~ ~s|aria-label="Light theme"|
+      assert html =~ ~s|aria-label="Dark theme"|
+      assert html =~ ~s|role="group"|
+    end
+
+    test "active-state classes are literal, so Tailwind can actually generate them" do
+      # Building these by interpolating the theme name compiles to a
+      # literal `[data-theme=#{theme}]` rule: the segments render but
+      # never highlight, because Tailwind scans source as text and cannot
+      # evaluate interpolation. Caught in the browser, pinned here.
+      assigns = %{}
+      html = rendered_to_string(~H|<CoreComponents.theme_toggle />|)
+
+      refute html =~ "\#{", "interpolation leaked into a class name"
+
+      # `&` renders escaped; the browser un-escapes it back to the selector.
+      assert html =~ "[[data-theme-source=user][data-theme=light]_&amp;]:text-primary"
+      assert html =~ "[[data-theme-source=user][data-theme=dark]_&amp;]:text-primary"
+      assert html =~ "[[data-theme-source=system]_&amp;]:text-primary"
+    end
+  end
+
   describe "card body opinions" do
     test "body content renders as a direct card-body child so the gap applies" do
       # Previously wrapped in a prose div, which made card-body's gap-2 dead

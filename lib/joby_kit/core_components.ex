@@ -438,6 +438,85 @@ defmodule JobyKit.CoreComponents do
   defp empty_rows?(rows) when is_list(rows), do: rows == []
   defp empty_rows?(rows), do: Enum.empty?(rows)
 
+  # -------------------------------------------------------- theme_toggle
+
+  # `active_class` is spelled out per entry rather than built from `value`.
+  # Tailwind scans source as text and cannot evaluate interpolation — an
+  # interpolated variant compiles to a literal `[data-theme=#{theme}]`
+  # rule, so the segments render but never highlight. Keep these literal.
+  @themes [
+    %{
+      value: "system",
+      icon: "hero-computer-desktop",
+      label: "Match system theme",
+      active_class:
+        "[[data-theme-source=system]_&]:text-primary [[data-theme-source=system]_&]:opacity-100"
+    },
+    %{
+      value: "light",
+      icon: "hero-sun",
+      label: "Light theme",
+      active_class:
+        "[[data-theme-source=user][data-theme=light]_&]:text-primary " <>
+          "[[data-theme-source=user][data-theme=light]_&]:opacity-100"
+    },
+    %{
+      value: "dark",
+      icon: "hero-moon",
+      label: "Dark theme",
+      active_class:
+        "[[data-theme-source=user][data-theme=dark]_&]:text-primary " <>
+          "[[data-theme-source=user][data-theme=dark]_&]:opacity-100"
+    }
+  ]
+
+  @doc """
+  Segmented system / light / dark theme control.
+
+      <.theme_toggle />
+
+  Pairs with the theme script Phoenix puts in `root.html.heex`, which
+  applies the stored choice before first paint and listens for the
+  `phx:set-theme` event these buttons dispatch. Selection state is read
+  straight off `<html data-theme>` / `data-theme-source` in CSS, so the
+  control stays correct without round-tripping through the server.
+
+  Generated apps get this in their layout. If you are installing into an
+  existing app, make sure `root.html.heex` carries that script — without
+  it the buttons dispatch into nothing.
+  """
+  attr :class, :any, default: nil
+  attr :rest, :global
+
+  def theme_toggle(assigns) do
+    assigns = assign(assigns, :themes, @themes)
+
+    ~H"""
+    <div
+      data-component="JobyKit.CoreComponents.theme_toggle"
+      class={["join", @class]}
+      role="group"
+      aria-label="Color theme"
+      {@rest}
+    >
+      <.button
+        :for={theme <- @themes}
+        type="button"
+        size="sm"
+        variant="ghost"
+        shape="square"
+        class={["join-item opacity-50 transition-opacity hover:opacity-80", theme.active_class]}
+        phx-click={JS.dispatch("phx:set-theme")}
+        data-phx-theme={theme.value}
+        aria-label={theme.label}
+        title={theme.label}
+      >
+        <.icon name={theme.icon} class="size-4" />
+      </.button>
+    </div>
+    """
+  end
+
   # -------------------------------------------------------------- flash
 
   @doc """

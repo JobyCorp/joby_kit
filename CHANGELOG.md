@@ -102,6 +102,44 @@ Two new rules, both from demonstrated harm in consumer apps:
   but nothing checked it: one app pasted the same header class string
   ten times and linted clean.
 
+### Starter app and theming
+
+The generated app is the kit's own worked example, so it has to be
+exemplary. It wasn't: it hand-rolled markup the linter would flag, and
+it dropped the theme switching every `mix phx.new` app ships with.
+
+* **New `theme_toggle/1`** — a segmented system / light / dark control,
+  registered and previewed like any other wrapper. `mix joby_kit.new`
+  restores the theme script Phoenix puts in `root.html.heex` (which
+  applies the stored choice before first paint, so there's no flash) and
+  wires the control into the layout. Phoenix builds its version from raw
+  `<button>` elements; this one composes `<.button shape="square">`, so
+  the kit's own chrome satisfies the contract the kit enforces.
+* **`simple_nav/1` no longer paints its own surface, and accepts globals.**
+  It carried `bg-base-100 border-b`, which produced a visible seam
+  wherever a layout wrapped it in its own sticky bar: the bar's
+  translucent background showed at the edges while the nav painted an
+  opaque strip only as wide as its max-width container. Surface belongs
+  to the container. It also gains an `:actions` slot for trailing
+  controls, `aria-current="page"` on the active link, and the
+  `attr :rest, :global` it was missing — the kit's own component had
+  been violating the contract.
+* **`simple_nav` and `theme_toggle` are registered** in the shipped
+  manifest, with previews, so both appear on `/design` and in
+  `/design.json`. The daisy catalogue's `navbar` and `theme-controller`
+  entries now read as wrapped.
+* **The landing page is a worked example rather than a welcome page.**
+  It hand-rolled a header, nested a second `<main>` inside the layout's,
+  and styled sections with one-off classes. It's now built entirely from
+  wrappers — `<.header>` with the new `:eyebrow`, `<.card>`, `<.list>`
+  for the build order (a real sequence, so the numbering carries
+  information) — and each section names the component that renders it.
+* **Signature cards: long attr defaults no longer collide with the attr
+  name.** The row is a two-column grid whose second track sized to
+  max-content, so a default like `simple_nav`'s link list overflowed
+  across the label. Long defaults now take the full-width row that
+  `values:` already used.
+
 ### Generators
 
 * **`mix joby_kit.new --no-dashboard` / `--no-mailer` produced apps that

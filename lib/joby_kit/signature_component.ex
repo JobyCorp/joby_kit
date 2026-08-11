@@ -80,15 +80,27 @@ defmodule JobyKit.SignatureComponent do
           <dt class="font-mono text-base-content">
             {attr.name}<span :if={attr.required} class="text-error"> *</span>
           </dt>
-          <dd class="text-right text-base-content/65">
+          <dd class="min-w-0 text-right text-base-content/65">
             <span class="font-mono">{attr.type}</span>
-            <span :if={attr.default} class="ml-2 font-mono text-base-content/55">
+            <span
+              :if={attr.default && not long_default?(attr.default)}
+              class="ml-2 font-mono text-base-content/55"
+            >
               = {attr.default}
             </span>
           </dd>
+          <%!-- A long default (a link list, a capture, a nested map) sized the
+          `auto` track past the container and collided with the attr name.
+          Give it the full-width treatment `values:` already uses. --%>
+          <dd
+            :if={attr.default && long_default?(attr.default)}
+            class="col-span-2 font-mono text-[0.66rem] break-words text-base-content/55"
+          >
+            = {attr.default}
+          </dd>
           <dd
             :if={attr.values}
-            class="col-span-2 font-mono text-[0.66rem] text-base-content/55"
+            class="col-span-2 font-mono text-[0.66rem] break-words text-base-content/55"
           >
             values: [{Enum.join(attr.values, " | ")}]
           </dd>
@@ -123,6 +135,10 @@ defmodule JobyKit.SignatureComponent do
 
   defp render_preview(fun) when is_function(fun, 1), do: fun.(%{})
   defp render_preview(_), do: nil
+
+  # Past this, an inline default competes with the attr name for the row.
+  @inline_default_limit 28
+  defp long_default?(default), do: String.length(to_string(default)) > @inline_default_limit
 
   defp slug(%{module: module, function: function}) do
     module
