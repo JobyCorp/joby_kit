@@ -21,10 +21,16 @@ defmodule JobyKit.Lint do
       block in a `.ex`) contains a raw `<button>`, `<input>`,
       `<textarea>`, or `<select>` outside of a wrapper definition. The
       kit ships wrappers for all four; reaching past them drops the
-      contract. Whole-file skipped when the file contains
-      `data-component=` (i.e., defines wrappers). Per-line opt-out via
-      `<%!-- jobykit:allow-raw-html --%>` (or `# jobykit:allow-raw-html`
-      on the preceding line for `.ex` files).
+      contract. Exempted per **enclosing `def`**: a function whose body
+      carries `data-component=` is a wrapper, and raw primitives inside
+      it are its own body. Commented-out markup is ignored. Per-line
+      opt-out via `<%!-- jobykit:allow-raw-html --%>`.
+    * `:forked_wrapper` (warning) — the app excludes a kit component
+      from `import JobyKit.CoreComponents` and substitutes its own, so
+      upstream fixes to that component never reach it.
+    * `:duplicated_class_string` (warning) — the same long `class="..."`
+      string appears three or more times, which the kit's own guidance
+      names as the signal that markup wants lifting into a wrapper.
 
   Each violation is a map with `:rule`, `:severity`, `:message`,
   `:file`, `:line`, `:module`, `:function`. The engine is pure data —
@@ -45,7 +51,11 @@ defmodule JobyKit.Lint do
 
   @default_paths ["lib/**/*.ex", "lib/**/*.heex"]
   @data_component_re ~r/data-component=(?:"([^"]+)"|'([^']+)')/
-  @raw_html_primitive_re ~r/<(button|input|textarea|select)\b/i
+  # Deliberately case-sensitive: HEEx reserves lowercase tags for HTML and
+  # capitalised ones for remote components, so `<Input.autocomplete />` is a
+  # component call, not a raw `<input>`. Matching case-insensitively flagged
+  # any host using a component module named Input/Select/Button.
+  @raw_html_primitive_re ~r/<(button|input|textarea|select)\b/
   @allow_raw_html_marker "jobykit:allow-raw-html"
 
   @doc """
@@ -77,10 +87,14 @@ defmodule JobyKit.Lint do
     registered = MapSet.new(healthy_entries, & &1.data_component)
     unregistered_violations = scan_unregistered_wrappers(paths, registered)
     raw_html_violations = scan_raw_html_primitives(paths)
+    forked_violations = scan_forked_wrappers(paths)
+    duplicated_class_violations = scan_duplicated_class_strings(paths)
 
     drift_violations ++
       data_component_violations ++
-      rest_global_violations ++ unregistered_violations ++ raw_html_violations
+      rest_global_violations ++
+      unregistered_violations ++
+      raw_html_violations ++ forked_violations ++ duplicated_class_violations
   end
 
   # -------------------------------------------------------- manifest_drift
@@ -127,7 +141,11 @@ defmodule JobyKit.Lint do
 
   defp check_data_component(entry) do
     case read_source(entry) do
-      {:ok, source} ->
+      {:ok, raw} ->
+        # A docstring that mentions the attribute does not satisfy the
+        # contract, so strip docs before looking for the real thing.
+        source = blank_doc_heredocs(raw)
+
         if String.contains?(source, ~s|data-component="#{entry.data_component}"|) or
              String.contains?(source, ~s|data-component='#{entry.data_component}'|) do
           []
@@ -205,7 +223,13 @@ defmodule JobyKit.Lint do
 
   defp scan_file_for_data_components(path) do
     case File.read(path) do
-      {:ok, contents} ->
+      {:ok, raw} ->
+        # Documentation that *describes* the contract is not a wrapper
+        # definition. The shipped composite_components.ex template spells
+        # out `data-component="<App>Web.CompositeComponents.<name>"` in its
+        # moduledoc, so every freshly installed host opened with a phantom
+        # unregistered_wrapper warning for a component named `<name>`.
+        contents = blank_doc_heredocs(raw)
         line_index = build_line_index(contents)
 
         Regex.scan(@data_component_re, contents, return: :index)
@@ -253,6 +277,124 @@ defmodule JobyKit.Lint do
     }
   end
 
+  # Shared: blank out `@doc`/`@moduledoc` heredocs, preserving newlines so
+  # line numbers stay accurate. Prose about the contract is not the
+  # contract.
+  @doc_heredoc_re ~r/@(?:module)?doc\s+(?:~S)?"""(?:.|\n)*?"""/
+
+  defp blank_doc_heredocs(contents) do
+    Regex.replace(@doc_heredoc_re, contents, fn match ->
+      String.replace(match, ~r/[^\n]/, " ")
+    end)
+  end
+
+  # ---------------------------------------------------------- forked_wrapper
+
+  @kit_import_except_re ~r/import\s+JobyKit\.CoreComponents\s*,\s*except:\s*\[([^\]]*)\]/
+
+  defp scan_forked_wrappers(patterns) do
+    patterns
+    |> Enum.flat_map(&Path.wildcard/1)
+    |> Enum.uniq()
+    |> Enum.flat_map(&scan_file_for_forks/1)
+    |> Enum.sort_by(&{&1.file, &1.line})
+  end
+
+  defp scan_file_for_forks(path) do
+    case File.read(path) do
+      {:ok, raw} ->
+        contents = blank_doc_heredocs(raw)
+        line_index = build_line_index(contents)
+
+        @kit_import_except_re
+        |> Regex.scan(contents, return: :index)
+        |> Enum.flat_map(fn [{start, _}, {list_start, list_len}] ->
+          binary_part(contents, list_start, list_len)
+          |> then(&Regex.scan(~r/([a-z_][a-z_0-9]*):\s*\d+/, &1))
+          |> Enum.map(fn [_, name] ->
+            forked_violation(name, path, line_for_offset(line_index, start))
+          end)
+        end)
+
+      {:error, _} ->
+        []
+    end
+  end
+
+  defp forked_violation(name, path, line) do
+    %{
+      rule: :forked_wrapper,
+      severity: :warning,
+      message:
+        "`#{name}/1` is excluded from the JobyKit.CoreComponents import, so this app renders its own copy — " <>
+          "kit fixes to #{name}/1 will not reach it. Re-check the CHANGELOG against your fork on every upgrade, " <>
+          "or drop the fork if the upstream component now covers your case.",
+      file: path,
+      line: line,
+      module: nil,
+      function: String.to_atom(name)
+    }
+  end
+
+  # -------------------------------------------------- duplicated_class_string
+
+  @class_attr_re ~r/class="([^"{}]{25,})"/
+  @duplicate_threshold 3
+
+  # The kit's own CLAUDE.md names "the same class string on the same
+  # semantic element on more than one page" as a symptom that the wrapper
+  # layer was skipped — but nothing checked for it, so an app could paste
+  # the same 60-character header string ten times and still lint clean.
+  defp scan_duplicated_class_strings(patterns) do
+    patterns
+    |> Enum.flat_map(&Path.wildcard/1)
+    |> Enum.uniq()
+    |> Enum.flat_map(&scan_file_for_class_strings/1)
+    |> Enum.group_by(& &1.class)
+    |> Enum.filter(fn {_class, uses} -> length(uses) >= @duplicate_threshold end)
+    |> Enum.sort_by(fn {class, _} -> class end)
+    |> Enum.map(fn {class, uses} -> duplicated_class_violation(class, uses) end)
+  end
+
+  defp scan_file_for_class_strings(path) do
+    case File.read(path) do
+      {:ok, raw} ->
+        contents = raw |> blank_doc_heredocs() |> blank_comments()
+        line_index = build_line_index(contents)
+
+        @class_attr_re
+        |> Regex.scan(contents, return: :index)
+        |> Enum.map(fn [{start, _}, {cs, cl}] ->
+          %{
+            class: contents |> binary_part(cs, cl) |> String.trim(),
+            file: path,
+            line: line_for_offset(line_index, start)
+          }
+        end)
+
+      {:error, _} ->
+        []
+    end
+  end
+
+  defp duplicated_class_violation(class, uses) do
+    first = List.first(uses)
+    where = uses |> Enum.map(&"#{&1.file}:#{&1.line}") |> Enum.uniq() |> Enum.take(4)
+
+    %{
+      rule: :duplicated_class_string,
+      severity: :warning,
+      message:
+        "the same #{String.length(class)}-character class string appears #{length(uses)} times — " <>
+          "lift it into a wrapper or composite and register it. Seen at: #{Enum.join(where, ", ")}" <>
+          if(length(uses) > length(where), do: ", …", else: ""),
+      file: first.file,
+      line: first.line,
+      module: nil,
+      function: nil
+    }
+  end
+
   # ----------------------------------------------------- raw_html_primitive
 
   defp scan_raw_html_primitives(patterns) do
@@ -266,10 +408,10 @@ defmodule JobyKit.Lint do
   defp scan_file_for_raw_primitives(path) do
     case File.read(path) do
       {:ok, contents} ->
-        cond do
-          not heex_bearing?(path, contents) -> []
-          wrapper_territory?(contents) -> []
-          true -> find_raw_primitives_in(path, contents)
+        if heex_bearing?(path, contents) do
+          find_raw_primitives_in(path, contents)
+        else
+          []
         end
 
       {:error, _} ->
@@ -282,41 +424,105 @@ defmodule JobyKit.Lint do
   # have no templates to lint. The sigil regex requires a delimiter
   # character immediately after `~H` so a comment that *mentions* `~H`
   # in prose doesn't flip a file into scannable mode.
-  @sigil_h_re ~r/~H["\[\(\{<\/\|]/
+  @sigil_h_re ~r/~H["'\[\(\{<\/\|]/
   defp heex_bearing?(path, contents) do
     Path.extname(path) == ".heex" or Regex.match?(@sigil_h_re, contents)
   end
 
-  # A file is "wrapper territory" if it contains `data-component=`
-  # anywhere — that means at least one wrapper definition lives here,
-  # and the rest of the file is treated as legitimate wrapper internals.
-  # File-level granularity is the v1 trade-off; per-function granularity
-  # would require AST parsing.
-  defp wrapper_territory?(contents) do
-    String.contains?(contents, "data-component=")
-  end
-
   defp find_raw_primitives_in(path, contents) do
+    # Marker lookups read the original text — the documented escape hatch
+    # is itself a HEEx comment, so it must be checked before comments are
+    # blanked out.
     lines = String.split(contents, "\n")
 
-    lines
+    # Docstrings routinely *describe* the rule ("never raw `<button>`") —
+    # the kit's own composite template does exactly that. Prose is not
+    # markup, so blank docs and comments before looking for tags.
+    scannable =
+      contents |> blank_doc_heredocs() |> blank_comments() |> String.split("\n")
+
+    exempt = wrapper_line_ranges(path, contents)
+
+    scannable
     |> Enum.with_index(1)
     |> Enum.flat_map(fn {line, line_no} ->
-      case Regex.run(@raw_html_primitive_re, line, return: :index) do
-        [{tag_offset, _}, {tag_start, tag_len}] ->
+      if exempt?(exempt, line_no) do
+        []
+      else
+        original = Enum.at(lines, line_no - 1) || ""
+
+        @raw_html_primitive_re
+        |> Regex.scan(line, return: :index)
+        |> Enum.flat_map(fn [{tag_offset, _}, {tag_start, tag_len}] ->
           tag = binary_part(line, tag_start, tag_len)
 
           cond do
-            allows_raw_html?(line, lines, line_no) -> []
+            allows_raw_html?(original, lines, line_no) -> []
             in_string_literal?(line, tag_offset) -> []
             true -> [raw_html_violation(path, line_no, tag)]
           end
-
-        _ ->
-          []
+        end)
       end
     end)
   end
+
+  # Blank out HEEx (`<%!-- --%>`) and HTML (`<!-- -->`) comments so
+  # commented-out markup doesn't read as live markup, preserving newlines
+  # so line numbers still line up with the original file.
+  defp blank_comments(contents) do
+    contents
+    |> blank_regions(~r/<%!--.*?--%>/s)
+    |> blank_regions(~r/<!--.*?-->/s)
+  end
+
+  defp blank_regions(contents, re) do
+    Regex.replace(re, contents, fn match ->
+      String.replace(match, ~r/[^\n]/, " ")
+    end)
+  end
+
+  # Wrapper territory, scoped to the enclosing `def`.
+  #
+  # A `def` whose body carries `data-component=` is a wrapper definition,
+  # and raw primitives inside it are the wrapper's own body — that's how
+  # wrappers work. Everything else in the file still gets checked. The
+  # old file-level exemption meant one small wrapper in a 500-line
+  # LiveView silenced the rule for the entire render, and a stray
+  # `data-component=` in a comment disabled it wholesale.
+  #
+  # `.heex` files have no defs; a template carrying `data-component=` is
+  # treated as a wrapper template and exempted whole, as before.
+  defp wrapper_line_ranges(path, contents) do
+    lines = String.split(contents, "\n")
+
+    cond do
+      Path.extname(path) == ".heex" ->
+        if String.contains?(blank_comments(contents), "data-component=") do
+          :all
+        else
+          []
+        end
+
+      true ->
+        starts =
+          lines
+          |> Enum.with_index(1)
+          |> Enum.filter(fn {line, _} -> Regex.match?(~r/^\s*defp?\s+[a-z_]/, line) end)
+          |> Enum.map(fn {_, line_no} -> line_no end)
+
+        ends = Enum.drop(starts, 1) |> Enum.map(&(&1 - 1)) |> Kernel.++([length(lines)])
+
+        Enum.zip(starts, ends)
+        |> Enum.filter(fn {from, to} ->
+          lines
+          |> Enum.slice((from - 1)..(to - 1)//1)
+          |> Enum.any?(&String.contains?(&1, "data-component="))
+        end)
+    end
+  end
+
+  defp exempt?(:all, _line_no), do: true
+  defp exempt?(ranges, line_no), do: Enum.any?(ranges, fn {a, b} -> line_no >= a and line_no <= b end)
 
   defp allows_raw_html?(line, lines, line_no) do
     String.contains?(line, @allow_raw_html_marker) or
@@ -360,8 +566,10 @@ defmodule JobyKit.Lint do
       severity: :warning,
       message:
         "raw <#{tag}> outside a wrapper definition — #{suggestion}. " <>
-          "Silence with `<%!-- #{@allow_raw_html_marker} --%>` (heex) " <>
-          "or `# #{@allow_raw_html_marker}` on the preceding line (.ex).",
+          "Silence with `<%!-- #{@allow_raw_html_marker} --%>` on the same or " <>
+          "preceding line. Inside a `~H` block that HEEx-comment form is the " <>
+          "only one that works: a `#` line there is literal template text and " <>
+          "renders into the page.",
       file: path,
       line: line_no,
       module: nil,

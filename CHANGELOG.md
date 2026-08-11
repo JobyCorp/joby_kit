@@ -52,6 +52,56 @@ hand-rolled panels against 10 `<.card>` uses; another had zero
   target it precisely — one app's `:last-child` workaround was hitting a
   data column on tables with no `:action` slot.
 
+### Linter
+
+The `:raw_html_primitive` rule is the kit's headline check, and it was
+both over- and under-firing. **Expect new findings after upgrading** —
+they are real, previously hidden.
+
+* **The exemption is now scoped to the enclosing `def`, not the file.**
+  Any file containing `data-component=` *anywhere* — including in a
+  comment or a docstring — silenced the rule for the whole file. One
+  small wrapper in a 500-line LiveView zeroed coverage for the entire
+  render, and a `# data-component=` comment disabled the check
+  wholesale without the audit trail the documented escape hatch leaves.
+  A `def` whose body carries `data-component=` is still treated as
+  wrapper territory; everything else in the file is checked. The kit's
+  own fixtures gained a finding the moment this landed.
+* **Prose is no longer mistaken for markup.** `@doc`/`@moduledoc`
+  heredocs and HEEx/HTML comments are blanked (newlines preserved)
+  before scanning. The kit's own `composite_components.ex` template
+  spells out `data-component="<App>Web.CompositeComponents.<name>"` and
+  says "never raw `<button>`/`<input>`/`<textarea>`" — so **every
+  freshly installed host opened with four phantom warnings**, one of
+  them quoting the sentence telling them not to do it. A clean install
+  now lints clean.
+* **Every primitive on a line is reported**, not just the first
+  (`Regex.scan`, not `Regex.run`) — fixing one used to reveal the next.
+* **Capitalised remote components are no longer flagged.** The tag
+  regex was case-insensitive, so `<Input.autocomplete />` read as a raw
+  `<input>`. HEEx reserves lowercase for HTML and capitalised for
+  components; the regex now matches accordingly.
+* `~H'''` heredocs are scanned (the sigil pattern missed the
+  single-quote delimiter, so those files were skipped entirely).
+* The violation message no longer suggests `# jobykit:allow-raw-html`
+  inside a template — in a `~H` block a `#` line is literal text that
+  renders into the page.
+
+Two new rules, both from demonstrated harm in consumer apps:
+
+* **`:forked_wrapper` (warning)** — flags components excluded from
+  `import JobyKit.CoreComponents` and replaced with a host copy. One app
+  forked `button/1` and `table/1`; the 0.2.1 `table/1` fix shipped into
+  a component it never renders, while its fork carried the identical
+  bug. Nothing surfaced that. Entries now also carry
+  `forked_from_kit` in `/design.json`, so "did that fix reach us?" is a
+  lookup instead of an archaeology exercise.
+* **`:duplicated_class_string` (warning)** — the same ≥25-character
+  `class` string appearing three or more times. The kit's own CLAUDE.md
+  names this as the symptom that markup wants lifting into a wrapper,
+  but nothing checked it: one app pasted the same header class string
+  ten times and linted clean.
+
 ## Unreleased (catalogue)
 
 Reconciles `DaisyCatalogue` with daisyUI 5.7.16, verified against the

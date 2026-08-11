@@ -78,6 +78,9 @@ defmodule JobyKit.ManifestController do
       data_component: entry.data_component,
       source: entry.source,
       line: entry.line,
+      # True when this app substitutes its own copy of a component the kit
+      # also ships — i.e. upstream fixes to it do not reach this app.
+      forked_from_kit: entry.forked_from_kit,
       attrs: entry.attrs,
       slots: entry.slots
     }

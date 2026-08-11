@@ -202,9 +202,28 @@ defmodule JobyKit.Manifest do
         slots: simplify_slots(meta[:slots] || []),
         line: meta[:line],
         data_component: "#{inspect(module)}.#{function}",
-        source: source_path(module)
+        source: source_path(module),
+        forked_from_kit: forked_from_kit?(module, function)
       }
     end)
+  end
+
+  @doc """
+  Whether this entry shadows a kit component with a host-owned copy.
+
+  An entry registered under a name the kit also ships, but pointing at a
+  module other than `JobyKit.CoreComponents`, is a fork: kit fixes to
+  that component never reach this app. Surfaced on `/design` and in
+  `/design.json` so "did that fix reach us?" is a lookup rather than an
+  archaeology exercise.
+  """
+  @spec forked_from_kit?(module(), atom()) :: boolean()
+  def forked_from_kit?(JobyKit.CoreComponents, _function), do: false
+
+  def forked_from_kit?(_module, function) do
+    Code.ensure_loaded?(JobyKit.CoreComponents) and
+      function_exported?(JobyKit.CoreComponents, :__components__, 0) and
+      Map.has_key?(JobyKit.CoreComponents.__components__(), function)
   end
 
   defp default_label(function) do

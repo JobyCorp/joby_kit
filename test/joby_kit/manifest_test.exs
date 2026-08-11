@@ -68,4 +68,28 @@ defmodule JobyKit.ManifestTest do
 
     assert Manifest.fetch(JobyKit.Test.Components, :nope) == nil
   end
+  describe "forked_from_kit?/2" do
+    test "a kit-named component owned by the host is a fork" do
+      # airo does `import JobyKit.CoreComponents, except: [button: 1, table: 1]`
+      # and registers its own — which is why the 0.2.1 table/1 fix shipped
+      # into a component airo never renders.
+      assert JobyKit.Manifest.forked_from_kit?(SomeAppWeb.CoreComponents, :button)
+      assert JobyKit.Manifest.forked_from_kit?(SomeAppWeb.CoreComponents, :table)
+    end
+
+    test "the kit's own components are never forks" do
+      refute JobyKit.Manifest.forked_from_kit?(JobyKit.CoreComponents, :button)
+    end
+
+    test "a host component the kit does not ship is not a fork" do
+      refute JobyKit.Manifest.forked_from_kit?(SomeAppWeb.CompositeComponents, :empty_state)
+      refute JobyKit.Manifest.forked_from_kit?(SomeAppWeb.ChatComponents, :composer)
+    end
+
+    test "entries carry the flag so /design.json can report it" do
+      entry = JobyKit.Test.Manifest.entries() |> hd()
+      assert Map.has_key?(entry, :forked_from_kit)
+    end
+  end
+
 end
