@@ -107,12 +107,22 @@ defmodule Mix.Tasks.JobyKit.New do
       web_module = opts[:module] || (app_camel <> "Web")
       web_path = Macro.underscore(web_module)
 
+      # The templates have to mirror the phx.new flags we forwarded: a
+      # router that imports Phoenix.LiveDashboard.Router in an app
+      # generated with --no-dashboard does not compile.
+      dashboard? = not Keyword.get(opts, :no_dashboard, false)
+      mailer? = not Keyword.get(opts, :no_mailer, false)
+
       assigns = [
         app: app_name,
         app_camel: app_camel,
         web_module: web_module,
         web_path: web_path,
-        web_module_anchor: String.replace(web_path, "/", "")
+        web_module_anchor: String.replace(web_path, "/", ""),
+        dashboard?: dashboard?,
+        mailer?: mailer?,
+        dev_routes?: dashboard? or mailer?,
+        gettext?: not Keyword.get(opts, :no_gettext, false)
       ]
 
       add_joby_kit_dep(dep_spec)
@@ -249,6 +259,22 @@ defmodule Mix.Tasks.JobyKit.New do
           "\\1      #{dep_line}\n",
           global: false
         )
+
+      # Regex.replace/4 returns the source unchanged when nothing matched,
+      # so without this check a phx.new layout we don't recognise would
+      # report success and then fail much later with an unrelated-looking
+      # compile error about undefined JobyKit modules.
+      unless String.contains?(patched, ":joby_kit") do
+        Mix.raise("""
+        could not add :joby_kit to #{Path.expand(path)}.
+
+        The generated mix.exs doesn't have the `defp deps do [` shape this
+        task patches — Phoenix may have changed its template. Add the dep
+        by hand and re-run `mix joby_kit.install`:
+
+            #{dep_line}
+        """)
+      end
 
       File.write!(path, patched)
       Mix.shell().info([:green, "* updating ", :reset, "mix.exs (added :joby_kit #{summary})"])

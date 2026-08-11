@@ -39,36 +39,31 @@ defmodule <%= @web_module %>.HomeLive do
           </p>
         </header>
 
+        <%!-- Fully qualified on purpose: bootstrap runs against an existing
+        app whose `:html` helpers may still import its own CoreComponents,
+        where <.card> does not exist. --%>
         <section class="grid gap-4 md:grid-cols-2">
-          <article class="card card-bordered border-base-300 bg-base-100 shadow-sm">
-            <div class="card-body">
-              <h2 class="card-title">Design system</h2>
-              <p class="text-sm text-base-content/70">
-                Kit-curated wrapper inventory, the wrapper contract, and the daisyUI catalogue.
-                Same shape across every JobyKit consumer.
-              </p>
-              <div class="card-actions mt-2">
-                <.link navigate={~p"/design"} class="btn btn-primary">
-                  Open /design
-                </.link>
-              </div>
-            </div>
-          </article>
+          <JobyKit.CoreComponents.card prose>
+            <:title>Design system</:title>
+            Kit-curated wrapper inventory, the wrapper contract, and the daisyUI catalogue.
+            Same shape across every JobyKit consumer.
+            <:actions>
+              <JobyKit.CoreComponents.button navigate={~p"/design"} variant="primary">
+                Open /design
+              </JobyKit.CoreComponents.button>
+            </:actions>
+          </JobyKit.CoreComponents.card>
 
-          <article class="card card-bordered border-base-300 bg-base-100 shadow-sm">
-            <div class="card-body">
-              <h2 class="card-title">Custom designs</h2>
-              <p class="text-sm text-base-content/70">
-                This app's generic composites and domain components — your team's
-                additions to the catalogue.
-              </p>
-              <div class="card-actions mt-2">
-                <.link navigate={~p"/custom-designs"} class="btn btn-soft">
-                  Open /custom-designs
-                </.link>
-              </div>
-            </div>
-          </article>
+          <JobyKit.CoreComponents.card prose>
+            <:title>Custom designs</:title>
+            This app's generic composites and domain components — your team's
+            additions to the catalogue.
+            <:actions>
+              <JobyKit.CoreComponents.button navigate={~p"/custom-designs"}>
+                Open /custom-designs
+              </JobyKit.CoreComponents.button>
+            </:actions>
+          </JobyKit.CoreComponents.card>
         </section>
 
         <section class="space-y-3 rounded-2xl border border-base-300 bg-base-200/40 p-6">

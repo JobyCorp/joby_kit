@@ -64,7 +64,7 @@ defmodule Mix.Tasks.JobyKit.NewTest do
       template = template_path("web_module.ex")
 
       rendered =
-        EEx.eval_file(template, assigns: [web_module: "MyAppWeb"])
+        EEx.eval_file(template, assigns: [web_module: "MyAppWeb", gettext?: true])
 
       assert rendered =~ "defmodule MyAppWeb do"
       assert rendered =~ "import JobyKit.CoreComponents"
@@ -73,6 +73,19 @@ defmodule Mix.Tasks.JobyKit.NewTest do
       # Aliasing Layouts is what makes `<Layouts.app>` resolve in render
       # functions without a fully-qualified prefix.
       assert rendered =~ "alias MyAppWeb.Layouts"
+    end
+
+    test "web_module keeps Gettext wired unless the app was generated without it" do
+      # phx.new still generates the Gettext backend; dropping the `use`
+      # while the backend exists leaves gettext(...) calls in templates
+      # failing to compile.
+      template = template_path("web_module.ex")
+
+      with_gettext = EEx.eval_file(template, assigns: [web_module: "MyAppWeb", gettext?: true])
+      without = EEx.eval_file(template, assigns: [web_module: "MyAppWeb", gettext?: false])
+
+      assert with_gettext =~ "use Gettext, backend: MyAppWeb.Gettext"
+      refute without =~ "Gettext"
     end
 
     test "layouts template wires JobyKit.NavComponent and flash_group" do
@@ -88,12 +101,7 @@ defmodule Mix.Tasks.JobyKit.NewTest do
     end
 
     test "router template wires browser/api pipelines and three live routes plus design.json" do
-      template = template_path("router.ex")
-
-      rendered =
-        EEx.eval_file(template,
-          assigns: [web_module: "MyAppWeb", app: "my_app"]
-        )
+      rendered = render_router(dashboard?: true, mailer?: true)
 
       assert rendered =~ "defmodule MyAppWeb.Router do"
       assert rendered =~ "pipeline :browser do"
@@ -104,6 +112,66 @@ defmodule Mix.Tasks.JobyKit.NewTest do
       assert rendered =~ "JobyKit.ManifestController"
       assert rendered =~ "MyAppWeb.DesignManifest"
       assert rendered =~ ":my_app"
+    end
+
+    # The task advertises forwarding --no-dashboard / --no-mailer to
+    # phx.new, but the router template referenced both unconditionally, so
+    # either flag produced an app that would not compile.
+    test "router omits the dashboard when the app was generated without it" do
+      rendered = render_router(dashboard?: false, mailer?: true)
+
+      refute rendered =~ "Phoenix.LiveDashboard.Router"
+      refute rendered =~ "live_dashboard"
+      assert rendered =~ "Plug.Swoosh.MailboxPreview"
+      assert_quoted!(rendered)
+    end
+
+    test "router omits the mailbox preview when the app was generated without a mailer" do
+      rendered = render_router(dashboard?: true, mailer?: false)
+
+      refute rendered =~ "Plug.Swoosh.MailboxPreview"
+      assert rendered =~ "live_dashboard"
+      assert_quoted!(rendered)
+    end
+
+    test "router drops the dev scope entirely when neither is present" do
+      rendered = render_router(dashboard?: false, mailer?: false)
+
+      refute rendered =~ "dev_routes"
+      refute rendered =~ ~s|scope "/dev"|
+      # …and the rest of the router is intact and still parses.
+      assert rendered =~ ~s|live "/design", DesignSystemLive, :index|
+      assert_quoted!(rendered)
+    end
+
+    test "every router variant is syntactically valid Elixir" do
+      for dashboard? <- [true, false], mailer? <- [true, false] do
+        rendered = render_router(dashboard?: dashboard?, mailer?: mailer?)
+
+        assert_quoted!(rendered)
+      end
+    end
+
+    defp render_router(opts) do
+      dashboard? = Keyword.fetch!(opts, :dashboard?)
+      mailer? = Keyword.fetch!(opts, :mailer?)
+
+      EEx.eval_file(template_path("router.ex"),
+        assigns: [
+          web_module: "MyAppWeb",
+          app: "my_app",
+          dashboard?: dashboard?,
+          mailer?: mailer?,
+          dev_routes?: dashboard? or mailer?
+        ]
+      )
+    end
+
+    defp assert_quoted!(source) do
+      case Code.string_to_quoted(source) do
+        {:ok, _} -> :ok
+        {:error, {meta, msg, token}} -> flunk("generated code does not parse (#{inspect(meta)}): #{msg}#{token}\n\n#{source}")
+      end
     end
 
     test "root layout substitutes @app_camel and references CSS/JS assets" do

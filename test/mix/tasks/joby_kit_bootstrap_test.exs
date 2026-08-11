@@ -221,6 +221,42 @@ defmodule Mix.Tasks.JobyKit.BootstrapTest do
     File.write!("lib/demo_app_web/controllers/page_html/home.html.heex", "<h1>home</h1>\n")
   end
 
+  test "every generated and rewritten file is syntactically valid Elixir", %{tmp_dir: tmp_dir} do
+    in_tmp_project(tmp_dir, "demo_app", fn ->
+      seed_router("""
+      defmodule DemoAppWeb.Router do
+        use DemoAppWeb, :router
+
+        pipeline :browser do
+          plug :accepts, ["html"]
+        end
+
+        pipeline :api do
+          plug :accepts, ["json"]
+        end
+
+        scope "/", DemoAppWeb do
+          pipe_through :browser
+
+          get "/", PageController, :home
+        end
+      end
+      """)
+
+      seed_page_controller()
+      Mix.Tasks.JobyKit.Bootstrap.run([])
+
+      # The router is rewritten by regex, so it is the likeliest thing to
+      # end up unparseable — and nothing checked.
+      for path <- Path.wildcard("lib/demo_app_web/**/*.ex") do
+        case path |> File.read!() |> Code.string_to_quoted() do
+          {:ok, _ast} -> :ok
+          {:error, {meta, msg, token}} -> flunk("#{path} does not parse (#{inspect(meta)}): #{msg}#{token}")
+        end
+      end
+    end)
+  end
+
   defp in_tmp_project(tmp_dir, app_name, fun) do
     project = Path.join(tmp_dir, app_name)
     File.mkdir_p!(project)

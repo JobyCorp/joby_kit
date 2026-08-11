@@ -222,6 +222,29 @@ defmodule Mix.Tasks.JobyKit.InstallTest do
     end)
   end
 
+  test "every generated file is syntactically valid Elixir", %{tmp_dir: tmp_dir} do
+    # The suite asserts on generated *strings*; nothing ever parsed them, so
+    # a HEEx syntax error or an unbalanced heredoc in a template would ship
+    # green and only surface in a host app's compile.
+    in_tmp_project(tmp_dir, "demo_app", fn ->
+      Mix.Tasks.JobyKit.Install.run([])
+
+      generated = Path.wildcard("lib/demo_app_web/**/*.ex")
+
+      assert length(generated) == 5, "expected 5 generated files, got: #{inspect(generated)}"
+
+      for path <- generated do
+        case path |> File.read!() |> Code.string_to_quoted() do
+          {:ok, _ast} ->
+            :ok
+
+          {:error, {meta, msg, token}} ->
+            flunk("#{path} does not parse (#{inspect(meta)}): #{msg}#{token}")
+        end
+      end
+    end)
+  end
+
   defp in_tmp_project(tmp_dir, app_name, fun) do
     project = Path.join(tmp_dir, app_name)
     File.mkdir_p!(project)

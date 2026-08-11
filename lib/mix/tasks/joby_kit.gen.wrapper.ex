@@ -155,7 +155,13 @@ defmodule Mix.Tasks.JobyKit.Gen.Wrapper do
       :ok
     else
       File.mkdir_p!(Path.dirname(path))
+      web_module = module |> String.split(".") |> hd()
 
+      # `use <App>Web, :html` rather than a bare `use Phoenix.Component`:
+      # composites compose core wrappers and verified routes, and the
+      # install template does the same. A bare Phoenix.Component scaffold
+      # fails to compile the moment the new composite uses `<.icon>` or
+      # `~p"/..."` — which the kit's own worked example does.
       File.write!(path, """
       defmodule #{module} do
         @moduledoc \"\"\"
@@ -163,7 +169,9 @@ defmodule Mix.Tasks.JobyKit.Gen.Wrapper do
         across domains. Surfaces on /custom-designs.
         \"\"\"
 
-        use Phoenix.Component
+        use #{web_module}, :html
+
+        alias JobyKit.CoreComponents
       end
       """)
 

@@ -28,15 +28,16 @@ defmodule <%= @web_module %>.Router do
     get "/design.json", JobyKit.ManifestController, :show,
       private: %{joby_kit_manifest: <%= @web_module %>.DesignManifest}
   end
-
+<%= if @dev_routes? do %>
   if Application.compile_env(:<%= @app %>, :dev_routes) do
-    import Phoenix.LiveDashboard.Router
-
+<%= if @dashboard? do %>    import Phoenix.LiveDashboard.Router
+<% end %>
     scope "/dev" do
       pipe_through :browser
-
+<%= if @dashboard? do %>
       live_dashboard "/dashboard", metrics: <%= @web_module %>.Telemetry
+<% end %><%= if @mailer? do %>
       forward "/mailbox", Plug.Swoosh.MailboxPreview
-    end
+<% end %>    end
   end
-end
+<% end %>end

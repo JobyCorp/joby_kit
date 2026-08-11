@@ -80,7 +80,10 @@ defmodule Mix.Tasks.JobyKit.Gen.WrapperTest do
 
         comp = File.read!("lib/demo_app_web/components/composite_components.ex")
         assert comp =~ "defmodule DemoAppWeb.CompositeComponents do"
-        assert comp =~ "use Phoenix.Component"
+        # `use <App>Web, :html`, not a bare Phoenix.Component: composites
+      # compose core wrappers and verified routes.
+      assert comp =~ "use DemoAppWeb, :html"
+      assert comp =~ "alias JobyKit.CoreComponents"
         assert comp =~ "def chat_panel(assigns)"
         assert comp =~ ~s|data-component="DemoAppWeb.CompositeComponents.chat_panel"|
 
@@ -188,6 +191,31 @@ defmodule Mix.Tasks.JobyKit.Gen.WrapperTest do
         end
       end)
     end
+  end
+
+  test "scaffolded output parses, for both a core wrapper and a composite",
+       %{tmp_dir: tmp_dir} do
+    # The task's own stated success criterion is that `mix joby_kit.lint`
+    # comes back clean afterwards; nothing verified even that the code it
+    # inserts is syntactically valid. Insertion is done by regex against
+    # the module's closing `end`, so a mismatch corrupts the file.
+    in_installed_project(tmp_dir, fn ->
+      Mix.Tasks.JobyKit.Gen.Wrapper.run(["modal", "--daisy", "modal"])
+      Mix.Tasks.JobyKit.Gen.Wrapper.run(["chat_panel", "--category", "composite"])
+
+      for path <- Path.wildcard("lib/demo_app_web/**/*.ex") do
+        case path |> File.read!() |> Code.string_to_quoted() do
+          {:ok, _ast} -> :ok
+          {:error, {meta, msg, token}} -> flunk("#{path} does not parse (#{inspect(meta)}): #{msg}#{token}")
+        end
+      end
+
+      # And the generated wrapper still satisfies the contract it exists
+      # to scaffold.
+      composite = File.read!("lib/demo_app_web/components/composite_components.ex")
+      assert composite =~ ~s|data-component="DemoAppWeb.CompositeComponents.chat_panel"|
+      assert composite =~ "attr :rest, :global"
+    end)
   end
 
   # ----------------------------------------------------------------- helpers

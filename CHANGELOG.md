@@ -102,6 +102,44 @@ Two new rules, both from demonstrated harm in consumer apps:
   but nothing checked it: one app pasted the same header class string
   ten times and linted clean.
 
+### Generators
+
+* **`mix joby_kit.new --no-dashboard` / `--no-mailer` produced apps that
+  don't compile.** Both flags are advertised as forwarded to `phx.new`,
+  but the router template referenced `Phoenix.LiveDashboard.Router` and
+  `Plug.Swoosh.MailboxPreview` unconditionally. The template is now
+  conditional, and drops the whole `/dev` scope when neither is present.
+  All four flag combinations are parse-checked in the suite.
+* **`mix joby_kit.new` no longer silently half-succeeds.** If the
+  `defp deps do [` regex didn't match the generated `mix.exs`,
+  `Regex.replace/4` returned the source unchanged — the task printed
+  "* updating mix.exs" and the failure surfaced much later as an
+  unrelated-looking error about undefined `JobyKit` modules. It now
+  verifies the dep landed and raises with the line to add by hand.
+* **The generated web module keeps Gettext wired.** It dropped
+  phx.new's `use Gettext, backend: …` while the app still shipped the
+  backend, so any `gettext(...)` call in a template failed to compile.
+  Now included, and omitted only for `--no-gettext`.
+* **`mix joby_kit.bootstrap`'s home page no longer models the
+  anti-pattern the kit polices.** It hand-rolled
+  `card card-bordered` / `btn btn-primary` markup instead of using the
+  wrappers — and `card-bordered` has been dead since daisyUI 5 (the v5
+  name is `card-border`), so the "bordered" card wasn't even bordered.
+  Now uses `<JobyKit.CoreComponents.card>` / `.button`, fully qualified
+  because bootstrap runs against an existing app whose own
+  `CoreComponents` may still be imported.
+* **`mix joby_kit.gen.wrapper --category composite` scaffolded a module
+  that couldn't hold a real composite.** A fresh
+  `composite_components.ex` got a bare `use Phoenix.Component`, so the
+  first `<.icon>` or `~p"/..."` in the new composite failed to compile —
+  and the kit's own worked example uses both. It now matches the install
+  template: `use <App>Web, :html`.
+* Tests: generated output is parsed (`Code.string_to_quoted`) across
+  install, bootstrap, and gen.wrapper. Nothing had ever checked that the
+  code these tasks write is syntactically valid; the suite asserted on
+  strings only. Install also asserts the expected file count, so a
+  template added without a test can't slip by.
+
 ## Unreleased (catalogue)
 
 Reconciles `DaisyCatalogue` with daisyUI 5.7.16, verified against the

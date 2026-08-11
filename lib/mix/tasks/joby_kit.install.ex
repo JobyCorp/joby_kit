@@ -4,15 +4,21 @@ defmodule Mix.Tasks.JobyKit.Install do
   @moduledoc """
   Installs JobyKit into an existing Phoenix project.
 
-  Generates four files under `lib/<your_app>_web/`:
+  Generates five files under `lib/<your_app>_web/`:
 
-    * `design_manifest.ex` — `use JobyKit.Manifest` declaration with one
-      example component registration and a `daisy_overrides/0` callback.
+    * `design_manifest.ex` — `use JobyKit.Manifest`, with every shipped
+      core wrapper pre-registered and a `daisy_overrides/0` callback.
     * `design_previews.ex` — preview functions for the registered
       components (one per component, suffixed `_preview`).
+    * `components/composite_components.ex` — the worked `empty_state`
+      composite, as a precedent for extending the kit.
     * `live/design_system_live.ex` — the kit-curated `/design` page.
     * `live/custom_designs_live.ex` — the host-owned `/custom-designs`
       page for composites and domain components.
+
+  It also patches, idempotently: `AGENTS.md` and `CLAUDE.md` (the
+  wrapper-contract guidance), `assets/css/app.css` (a Tailwind
+  `@source` so kit classes are generated), and your layout's nav.
 
   Existing files are not overwritten unless you pass `--force`. Routes
   are not auto-injected; the task prints the lines you need to add to
