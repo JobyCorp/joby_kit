@@ -36,9 +36,16 @@ defmodule JobyKit.ManifestController do
     end
   end
 
+  # Any atom used to pass this guard, so a typo'd module name
+  # (`DesignManifst`) sailed through and then raised
+  # UndefinedFunctionError deep inside payload/1 — surfacing as a generic
+  # HTML 500 rather than the JSON error written for exactly this case.
   defp fetch_manifest(conn) do
-    case conn.private[:joby_kit_manifest] do
-      module when is_atom(module) and not is_nil(module) -> {:ok, module}
+    with module when is_atom(module) and not is_nil(module) <- conn.private[:joby_kit_manifest],
+         {:module, ^module} <- Code.ensure_loaded(module),
+         true <- function_exported?(module, :entries, 0) do
+      {:ok, module}
+    else
       _ -> :error
     end
   end

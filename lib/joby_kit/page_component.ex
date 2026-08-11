@@ -266,7 +266,7 @@ defmodule JobyKit.PageComponent do
   defp component_index_section(assigns) do
     ~H"""
     <section
-      id="design-system-bardo-index"
+      id="design-system-index"
       data-jobykit-section="component-index"
       class="space-y-6"
     >
@@ -285,7 +285,7 @@ defmodule JobyKit.PageComponent do
 
       <article
         :for={{category, entries} <- @entries_by_category}
-        id={"design-bardo-category-" <> Atom.to_string(category)}
+        id={"design-category-" <> Atom.to_string(category)}
         data-category={category}
         class="rounded-2xl border border-base-300/70 bg-base-100/70 p-5 shadow-sm"
       >

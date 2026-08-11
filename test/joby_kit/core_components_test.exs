@@ -691,6 +691,48 @@ defmodule JobyKit.CoreComponentsTest do
     end
   end
 
+  describe "polish fixes" do
+    test "card uses daisy's own border modifier" do
+      assigns = %{}
+      html = rendered_to_string(~H|<CoreComponents.card>x</CoreComponents.card>|)
+
+      assert root_class(html) =~ "card-border"
+    end
+
+    test "file inputs honour multiple" do
+      # `multiple` was a declared attr rendered only in the select branch,
+      # so <.input type="file" multiple> silently picked one file.
+      assigns = %{}
+
+      html =
+        rendered_to_string(
+          ~H|<CoreComponents.input name="docs" value="" type="file" multiple />|
+        )
+
+      assert html =~ ~r/<input[^>]*multiple/
+    end
+
+    test "a non-file input does not sprout multiple" do
+      assigns = %{}
+      html = rendered_to_string(~H|<CoreComponents.input name="q" value="" type="text" />|)
+
+      refute html =~ "multiple"
+    end
+
+    test "an unknown icon name explains itself" do
+      # Previously a bare FunctionClauseError pointing into the kit.
+      assigns = %{}
+
+      err =
+        assert_raise ArgumentError, fn ->
+          rendered_to_string(~H|<CoreComponents.icon name="x-mark" />|)
+        end
+
+      assert Exception.message(err) =~ "hero-x-mark"
+      assert Exception.message(err) =~ "heroicons.com"
+    end
+  end
+
   describe "eyebrow" do
     test "carries the contract and renders its content" do
       assigns = %{}

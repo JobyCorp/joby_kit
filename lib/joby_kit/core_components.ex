@@ -70,6 +70,17 @@ defmodule JobyKit.CoreComponents do
     """
   end
 
+  # Without this the caller gets a bare FunctionClauseError pointing at
+  # the kit, which says nothing about the actual mistake.
+  def icon(%{name: name}) do
+    raise ArgumentError, """
+    unknown icon #{inspect(name)}.
+
+    `<.icon>` renders Heroicons, whose names start with "hero-". Try
+    #{inspect("hero-" <> to_string(name))}, or browse https://heroicons.com.
+    """
+  end
+
   # ------------------------------------------------------------- button
 
   @doc """
@@ -283,7 +294,7 @@ defmodule JobyKit.CoreComponents do
 
   def card(assigns) do
     variants = %{
-      "bordered" => "border border-base-300 bg-base-100",
+      "bordered" => "card-border border-base-300 bg-base-100",
       "ghost" => "border border-base-300/40 bg-base-100/60 backdrop-blur",
       "elevated" => "border border-base-300/60 bg-base-100 shadow-sm"
     }
@@ -1030,6 +1041,7 @@ defmodule JobyKit.CoreComponents do
           name={@name}
           id={@id}
           value={Phoenix.HTML.Form.normalize_value(@type, @value)}
+          multiple={@type == "file" && @multiple}
           class={["w-full input", @errors != [] && "input-error", @input_class]}
           aria-invalid={@errors != [] && "true"}
           aria-describedby={@errors != [] && error_id(@id)}

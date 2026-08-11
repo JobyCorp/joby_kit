@@ -92,4 +92,75 @@ defmodule JobyKit.ManifestTest do
     end
   end
 
+  describe "compile-time validation" do
+    test "an undeclared category is a compile error, not silent invisibility" do
+      # by_category/0 only walks declared categories, so an entry under a
+      # typo'd one vanishes from /design and /custom-designs while still
+      # appearing in entries() and /design.json.
+      assert_raise ArgumentError, ~r/category :cor, which is not declared/, fn ->
+        JobyKit.Manifest.validate_categories!(
+          FakeManifest,
+          [{JobyKit.Test.Components, :button, [category: :cor]}],
+          [{:core, label: "Core", description: "x"}]
+        )
+      end
+    end
+
+    test "the error names the categories that do exist" do
+      err =
+        assert_raise ArgumentError, fn ->
+          JobyKit.Manifest.validate_categories!(
+            FakeManifest,
+            [{JobyKit.Test.Components, :button, [category: :nope]}],
+            [{:core, label: "Core", description: "x"}, {:composite, label: "C", description: "y"}]
+          )
+        end
+
+      assert Exception.message(err) =~ ":composite, :core"
+    end
+
+    test "a declared category passes" do
+      assert :ok ==
+               JobyKit.Manifest.validate_categories!(
+                 FakeManifest,
+                 [{JobyKit.Test.Components, :button, [category: :core]}],
+                 [{:core, label: "Core", description: "x"}]
+               )
+    end
+
+    test "an anonymous preview is rejected with an actionable message" do
+      # Stored at compile time, so it hits Macro.escape and dies with
+      # "cannot escape #Function<...>" — which names no component.
+      assert_raise ArgumentError, ~r/anonymous preview function/, fn ->
+        JobyKit.Manifest.validate_categories!(
+          FakeManifest,
+          [{JobyKit.Test.Components, :button, [category: :core, preview: fn _ -> nil end]}],
+          [{:core, label: "Core", description: "x"}]
+        )
+      end
+    end
+
+    test "a remote capture preview passes" do
+      assert :ok ==
+               JobyKit.Manifest.validate_categories!(
+                 FakeManifest,
+                 [
+                   {JobyKit.Test.Components, :button,
+                    [category: :core, preview: &JobyKit.Test.DesignPreviews.button_preview/1]}
+                 ],
+                 [{:core, label: "Core", description: "x"}]
+               )
+    end
+  end
+
+  describe "category lookups are consistently strict" do
+    test "both label and description raise on an unknown category" do
+      # They disagreed: label raised, description returned "". A caller
+      # got either a crash or silently blank prose depending on which it
+      # happened to call.
+      assert_raise ArgumentError, fn -> JobyKit.Test.Manifest.category_label(:nope) end
+      assert_raise ArgumentError, fn -> JobyKit.Test.Manifest.category_description(:nope) end
+    end
+  end
+
 end

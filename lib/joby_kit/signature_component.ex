@@ -133,7 +133,24 @@ defmodule JobyKit.SignatureComponent do
     """
   end
 
-  defp render_preview(fun) when is_function(fun, 1), do: fun.(%{})
+  # One broken preview used to take down the whole catalogue: previews are
+  # rendered inline, so a `KeyError` from a preview that reads an assign
+  # 500s every other component's card along with it. Contain it and say
+  # which one failed — the page stays useful and the message points at the
+  # preview to fix.
+  defp render_preview(fun) when is_function(fun, 1) do
+    fun.(%{})
+  rescue
+    error ->
+      assigns = %{message: Exception.message(error)}
+
+      ~H"""
+      <p class="text-xs text-error">
+        This preview raised: {@message}
+      </p>
+      """
+  end
+
   defp render_preview(_), do: nil
 
   # Past this, an inline default competes with the attr name for the row.

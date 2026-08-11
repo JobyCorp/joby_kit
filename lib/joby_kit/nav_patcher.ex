@@ -75,7 +75,7 @@ defmodule JobyKit.NavPatcher do
   # the host's existing indentation).
   defp locate_insertion_point(contents) do
     with [{nav_start, _}] <- Regex.run(~r/<(?:nav|header)\b/, contents, return: :index),
-         remainder <- binary_part(contents, nav_start, byte_size(contents) - nav_start),
+         remainder <- nav_element(contents, nav_start),
          {ul_offset, _len} <- :binary.match(remainder, "</ul>") do
       ul_pos = nav_start + ul_offset
       indent = leading_indent(contents, ul_pos)
@@ -87,6 +87,30 @@ defmodule JobyKit.NavPatcher do
       }
     else
       _ -> nil
+    end
+  end
+
+  # Everything from the nav/header open tag to its matching close.
+  #
+  # Previously the `</ul>` search ran to end-of-file, so a header with no
+  # list of its own would happily adopt the first `</ul>` anywhere later
+  # in the document — a footer link list, a sidebar — and the patch still
+  # reported `:patched`. Bounding the search means a nav we can't place
+  # links inside returns `:no_nav_found`, which the install task already
+  # handles by printing manual instructions. Failing loudly beats writing
+  # into the wrong element.
+  defp nav_element(contents, nav_start) do
+    rest = binary_part(contents, nav_start, byte_size(contents) - nav_start)
+
+    close =
+      case Regex.run(~r/<(nav|header)\b/, rest, capture: :all_but_first) do
+        [tag] -> "</#{tag}>"
+        _ -> nil
+      end
+
+    case close && :binary.match(rest, close) do
+      {close_offset, len} -> binary_part(rest, 0, close_offset + len)
+      _ -> rest
     end
   end
 

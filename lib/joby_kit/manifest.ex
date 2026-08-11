@@ -14,7 +14,7 @@ defmodule JobyKit.Manifest do
 
         category :core,
           label: "Core wrappers",
-          description: "One Bardo wrapper per daisyUI primitive."
+          description: "One wrapper per daisyUI primitive."
 
         category :composite,
           label: "Generic composites",
@@ -92,6 +92,17 @@ defmodule JobyKit.Manifest do
   @callback category_description(atom()) :: String.t()
   @callback fetch(module(), atom()) :: entry() | nil
 
+  @doc """
+  Tells `JobyKit.DaisyCatalogue` which daisy primitives this app wraps.
+
+  Optional. Declared as a callback so a misspelling (`daisy_override/0`)
+  is a compile-time warning instead of a silent no-op that leaves every
+  wrapped primitive showing as unwrapped.
+  """
+  @callback daisy_overrides() :: %{optional(atom()) => %{optional(atom()) => String.t()}}
+
+  @optional_callbacks daisy_overrides: 0
+
   defmacro __using__(_opts) do
     quote do
       @behaviour JobyKit.Manifest
@@ -140,6 +151,8 @@ defmodule JobyKit.Manifest do
     components = Module.get_attribute(env.module, :joby_kit_components) |> Enum.reverse()
     categories = Module.get_attribute(env.module, :joby_kit_categories) |> Enum.reverse()
 
+    validate_categories!(env.module, components, categories)
+
     quote do
       @impl JobyKit.Manifest
       def entries, do: JobyKit.Manifest.enrich(unquote(Macro.escape(components)))
@@ -159,7 +172,7 @@ defmodule JobyKit.Manifest do
       def category_description(category) do
         case List.keyfind(unquote(Macro.escape(categories)), category, 0) do
           {_, opts} -> Keyword.get(opts, :description, "")
-          nil -> ""
+          nil -> raise ArgumentError, "unknown category: #{inspect(category)}"
         end
       end
 
@@ -177,6 +190,56 @@ defmodule JobyKit.Manifest do
         Enum.find(entries(), &(&1.module == module and &1.function == function))
       end
     end
+  end
+
+  @doc false
+  # An entry registered under a category that was never declared is
+  # dropped by `by_category/0`, which only walks declared categories — so
+  # the component vanishes from /design and /custom-designs while still
+  # appearing in entries() and /design.json. Silent invisibility is the
+  # exact failure this kit exists to prevent, so it is a compile error.
+  #
+  # Anonymous preview functions are caught here too: they reach
+  # `Macro.escape/1` in the generated `entries/0` and blow up with
+  # "cannot escape #Function<...>", which says nothing about the
+  # `component/3` line that caused it.
+  def validate_categories!(module, components, categories) do
+    declared = MapSet.new(categories, &elem(&1, 0))
+
+    for {comp_module, function, opts} <- components do
+      category = Keyword.fetch!(opts, :category)
+
+      unless MapSet.member?(declared, category) do
+        raise ArgumentError, """
+        #{inspect(module)} registers #{inspect(comp_module)}.#{function} under         category #{inspect(category)}, which is not declared.
+
+        Declared categories: #{declared |> Enum.sort() |> Enum.map_join(", ", &inspect/1)}
+
+        Add a `category #{inspect(category)}, label: "...", description: "..."`         line, or correct the component's `category:`. Left as is, the         component would be invisible on /design and /custom-designs.
+        """
+      end
+
+      case Keyword.get(opts, :preview) do
+        nil ->
+          :ok
+
+        fun when is_function(fun, 1) ->
+          unless Function.info(fun, :type) == {:type, :external} do
+            raise ArgumentError, """
+            #{inspect(module)} registers #{inspect(comp_module)}.#{function} with an             anonymous preview function.
+
+            Previews are stored at compile time, so they have to be remote             captures: `preview: &MyAppWeb.DesignPreviews.thing_preview/1`, not             `preview: fn assigns -> ... end`.
+            """
+          end
+
+        other ->
+          raise ArgumentError, """
+          #{inspect(module)} registers #{inspect(comp_module)}.#{function} with an           invalid `preview:` — expected a 1-arity function capture, got           #{inspect(other)}.
+          """
+      end
+    end
+
+    :ok
   end
 
   @doc """

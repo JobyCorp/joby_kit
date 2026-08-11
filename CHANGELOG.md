@@ -1,5 +1,66 @@
 # Changelog
 
+## Unreleased
+
+Polish pass over the items the audit had left open, plus removal of an
+internal codename from public surfaces.
+
+* **`Bardo` is gone from public API.** The design page's scraper-facing
+  DOM ids were `design-system-bardo-index` and
+  `design-bardo-category-<x>`, and the manifest docs said "One Bardo
+  wrapper per daisyUI primitive". Now `design-system-index` and
+  `design-category-<x>`. Renaming was safe because no app in the fleet
+  referenced them; the kit promises these ids are stable, so this was the
+  last moment to change them cheaply.
+* **`app_css` derives the Tailwind `@source` path** from
+  `Mix.Project.deps_paths()` instead of hardcoding
+  `../../deps/joby_kit/lib`. The hardcoded form failed silently twice
+  over: umbrella apps keep deps at the root so it never resolved, and an
+  app switched from a hex dep to a path dep keeps the old `deps/joby_kit/`
+  directory, so the `@source` kept resolving — to a stale copy of the
+  previous version. Observed live: Tailwind generating CSS from 0.2.1
+  while the app compiled against 0.2.3, so new classes silently never
+  reached the stylesheet.
+* **`NavPatcher` no longer writes into the wrong element.** The `</ul>`
+  search ran to end-of-file, so a header without its own list would adopt
+  the first list anywhere later in the document — a footer, a sidebar —
+  and still report success. It is now bounded to the enclosing
+  nav/header; a nav we can't place links inside returns `:no_nav_found`
+  and the install task prints manual instructions.
+* **Undeclared categories are a compile error.** An entry registered
+  under a typo'd `category:` was dropped by `by_category/0` and vanished
+  from `/design` and `/custom-designs` while still appearing in
+  `entries/0` and `/design.json`. Silent invisibility is the failure this
+  kit exists to prevent. The error names the component and lists the
+  categories that do exist. Anonymous `preview:` functions are rejected
+  the same way, instead of dying inside `Macro.escape` with a message
+  that names nothing.
+* **`daisy_overrides/0` is a declared optional callback**, so
+  misspelling it is a compile warning rather than a silent no-op that
+  leaves every wrapped primitive showing as unwrapped.
+* **`category_label/1` and `category_description/1` agree.** One raised
+  on an unknown category and the other returned `""`, so a caller got
+  either a crash or silently blank prose depending on which it happened
+  to call.
+* **One broken preview no longer takes down `/design`.** Previews render
+  inline, so a `KeyError` from a preview that reads an assign 500'd every
+  other component's card with it. Now contained, with the error rendered
+  in place of that one preview.
+* **`ManifestController` returns its JSON error for a typo'd module.**
+  Any atom passed the guard, so `DesignManifst` raised
+  `UndefinedFunctionError` deep inside the payload and surfaced as a
+  generic HTML 500 — instead of the helpful JSON response written for
+  exactly this case.
+* `card` uses daisy's `card-border` rather than hand-rolled border
+  classes; `<.input type="file" multiple>` actually accepts multiple
+  files (the attr was only rendered in the select branch); and an unknown
+  `<.icon>` name explains itself instead of raising a bare
+  `FunctionClauseError` inside the kit.
+
+Closed as won't-do: `list` stays a `ul`. daisy's `list` requires
+`ul`/`li.list-row`, and `title_class` in 0.3.0 addressed the actual
+complaint.
+
 ## v0.3.0
 
 **Breaking, on purpose.** See [MIGRATING-0.3.md](MIGRATING-0.3.md) for the

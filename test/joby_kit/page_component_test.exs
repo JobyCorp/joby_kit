@@ -11,7 +11,7 @@ defmodule JobyKit.PageComponentTest do
     assert html =~ ~s(data-jobykit-page="kit")
     assert html =~ "design-system-decision-tree"
     assert html =~ "design-system-wrapper-contract"
-    assert html =~ "design-system-bardo-index"
+    assert html =~ "design-system-index"
     assert html =~ "design-system-daisyui"
   end
 
@@ -19,13 +19,13 @@ defmodule JobyKit.PageComponentTest do
     html = render_component(&PageComponent.page_component/1, manifest: JobyKit.Test.Manifest)
 
     # Both registered entries are :core in the test manifest, both should render.
-    assert html =~ "design-bardo-category-core"
+    assert html =~ "design-category-core"
     assert html =~ ~s(data-function="button")
     assert html =~ ~s(data-function="badge")
 
     # No composite/domain category articles render.
-    refute html =~ "design-bardo-category-composite"
-    refute html =~ "design-bardo-category-domain"
+    refute html =~ "design-category-composite"
+    refute html =~ "design-category-domain"
   end
 
   test "page_component renders the agent-redirect callout when custom_path is set" do
@@ -66,10 +66,10 @@ defmodule JobyKit.PageComponentTest do
 
     assert html =~ ~s(data-jobykit-page="custom")
     assert html =~ ~s(href="/design")
-    assert html =~ "design-bardo-category-composite"
+    assert html =~ "design-category-composite"
 
     # :core never surfaces here even when it's in the manifest.
-    refute html =~ "design-bardo-category-core"
+    refute html =~ "design-category-core"
     refute html =~ ~s(data-function="button")
 
     # Composites (and domain) entries do.
