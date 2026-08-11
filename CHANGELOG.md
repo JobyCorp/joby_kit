@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased (0.3.0 line)
+## v0.3.0
 
 **Breaking, on purpose.** See [MIGRATING-0.3.md](MIGRATING-0.3.md) for the
 upgrade, including the list of compensating hacks to delete.
@@ -249,7 +249,7 @@ it dropped the theme switching every `mix phx.new` app ships with.
   strings only. Install also asserts the expected file count, so a
   template added without a test can't slip by.
 
-## Unreleased (catalogue)
+### daisyUI catalogue
 
 Reconciles `DaisyCatalogue` with daisyUI 5.7.16, verified against the
 published package rather than the docs prose.
