@@ -47,7 +47,7 @@ defmodule JobyKit do
 
       def render(assigns), do: ~H\"\"\"
         <Layouts.app flash={@flash}>
-          <JobyKit.PageComponent manifest={MyAppWeb.DesignManifest} />
+          <JobyKit.PageComponent.page_component manifest={MyAppWeb.DesignManifest} />
         </Layouts.app>
       \"\"\"
   """
