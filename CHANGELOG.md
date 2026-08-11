@@ -8,7 +8,23 @@
 > kept the identical bug. `mix joby_kit.lint` now reports
 > `:forked_wrapper`, and `/design.json` carries `forked_from_kit`.
 
-## Unreleased
+## v0.3.2
+
+Two fixes to the same flaw, found while migrating the first app: the
+`/design` page was host-specific when its entire promise is being
+identical across every JobyKit consumer.
+
+Nothing here requires host action, and nothing fails to compile. The
+changes affect the two documentation surfaces — `/design` and
+`/custom-designs` — not the components an app renders.
+
+**One thing to know before upgrading:** if you customised the previews
+or summaries for *kit* components in your own `DesignPreviews` /
+`DesignManifest`, those no longer appear on `/design` — the kit's
+canonical versions do. That is the point of the change, but it means a
+local tweak you liked will quietly stop showing. Previews for your own
+components are untouched.
+
 
 ### `/design` is the kit's page, structurally
 
