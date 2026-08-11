@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+* `flash/1`: every toast gets a usable `id` again. `attr :id` already
+  puts `:id` in assigns, so the `assign_new/3` default never fired and
+  any flash rendered without an explicit id — both toasts
+  `flash_group/1` shows, i.e. the ones users actually see — rendered
+  with no `id` attribute and a dismiss handler of `JS.hide(to: "#")`.
+  `#` is not a valid selector, so clicking a flash threw
+  `Failed to execute 'querySelectorAll' on 'Document'` and the toast
+  never faded out. The `lv:clear-flash` push runs first, so the flash
+  still cleared — which is how this stayed hidden behind a
+  working-looking dismiss.
+
 ## v0.2.0
 
 Wrapper-contract enforcement: agent-experience fixes for the failure
