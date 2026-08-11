@@ -33,10 +33,12 @@ JobyKit pushes the codebase in the opposite direction. Your app declares a
 
 ### Generate a new app from scratch
 
-Install the kit as a global Mix archive:
+The project generator ships as its own package, `joby_kit_new`, the same
+way `phx_new` is separate from `phoenix`. It has to run before a project
+exists, so it installs as a Mix archive:
 
 ```sh
-mix archive.install hex joby_kit
+mix archive.install hex joby_kit_new
 ```
 
 Then from anywhere:
@@ -263,10 +265,14 @@ domain composites are all returned together with category labels.
   `<.flash>`, `<.flash_group>`, `<.header>`, `<.list>`, `<.table>`).
 * **Mix tasks** — `mix joby_kit.install` (existing app),
   `mix joby_kit.bootstrap` (greenfield over an existing phx.new),
-  `mix joby_kit.new` (fresh app from scratch via `mix phx.new`),
   `mix joby_kit.gen.wrapper` (scaffold a contract-clean wrapper +
   manifest entry + preview), `mix joby_kit.lint` (verify the wrapper
-  contract).
+  contract). These live in this package, so the version in your
+  `mix.exs` is the one that runs.
+  `mix joby_kit.new` (fresh app from scratch) ships separately as
+  [joby_kit_new](https://github.com/jobycorp/joby_kit_new) — it must run
+  before a project exists, and an archive carrying the in-project tasks
+  would shadow every app's own dependency.
 * **Patchers** — `JobyKit.AgentsMd` and `JobyKit.NavPatcher` keep
   AGENTS.md and the host's nav consistent with the kit's stance, both
   idempotent.

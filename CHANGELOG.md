@@ -102,6 +102,40 @@ Two new rules, both from demonstrated harm in consumer apps:
   but nothing checked it: one app pasted the same header class string
   ten times and linted clean.
 
+### `mix joby_kit.new` moved to its own package
+
+**Action required if you install the archive:**
+
+```sh
+mix archive.uninstall joby_kit
+mix archive.install hex joby_kit_new
+```
+
+The generator now lives at
+[joby_kit_new](https://github.com/JobyCorp/joby_kit_new). Nothing else
+changes — `joby_kit.install`, `bootstrap`, `gen.wrapper` and `lint` stay
+in this package, which is the point.
+
+`joby_kit.new` has to run before a project exists, so it can only be a
+Mix archive — and an archive puts *everything it contains* on the global
+code path. With the in-project tasks in the same package, the archive's
+copy of them shadowed each project's own dependency. Concretely: with a
+project pinned to 0.2.3 and a 0.2.0 archive installed,
+`mix joby_kit.install` generated 0.2.0 scaffolding, and re-running
+changed nothing. **An app's `mix.exs` did not control which JobyKit
+generated its files** — whichever archive was on the machine did. That
+also explains generated-file drift across a fleet.
+
+Only `joby_kit.lint` escaped, by accident: it declares
+`@requirements ["compile"]`, which loads the project's dependencies
+first, so the dependency's copy won.
+
+Splitting removes the possibility instead of detecting it, and follows
+Phoenix's arrangement — `phx_new` is a separate hex package from
+`phoenix`. A version guard was considered and rejected: Mix gives no way
+to prefer the dependency's task over an archive's, so a warning would
+have left users stuck rather than fixed.
+
 ### New components
 
 Three of the four components consumers had built for themselves. The

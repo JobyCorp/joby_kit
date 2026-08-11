@@ -41,7 +41,8 @@ defmodule Mix.Tasks.JobyKit.Install do
 
   See the `mix joby_kit.bootstrap` task for a more aggressive variant
   aimed at fresh `mix phx.new` projects (replaces the default Phoenix
-  landing page). For a from-scratch app, see `mix joby_kit.new`.
+  landing page). For a from-scratch app, see `mix joby_kit.new`, which
+  ships as the separate `joby_kit_new` archive.
   """
 
   use Mix.Task

@@ -6,7 +6,8 @@ defmodule Mix.Tasks.JobyKit.Bootstrap do
   JobyKit demo. Run this when you already have a Phoenix app and want
   to convert it into a kit-flavored greenfield demo.
 
-  For a fresh app from scratch, use `mix joby_kit.new` (which wraps
+  For a fresh app from scratch, use `mix joby_kit.new` from the
+  separate `joby_kit_new` archive (which wraps
   `mix phx.new --no-html` and ships the kit's HTML layer from minute
   one).
 
