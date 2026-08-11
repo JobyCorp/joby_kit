@@ -3,7 +3,7 @@ defmodule JobyKit.SignatureComponent do
   Per-component signature card rendered inside the JobyKit design index.
 
   Takes a single manifest `:entry` (as returned by
-  `JobyKit.Manifest.entries/0`) and renders the agent-facing card:
+  `c:JobyKit.Manifest.entries/0`) and renders the agent-facing card:
   label, data-component identifier, status pills, summary, collapsible
   preview, attrs table, slots list, and source link.
 

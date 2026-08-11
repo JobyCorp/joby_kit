@@ -240,7 +240,8 @@ defmodule JobyKit.CoreComponents do
 
   @doc """
   Generic table with `:col` slots and an optional `:action` slot. Accepts
-  either a regular list or a `Phoenix.LiveView.LiveStream` for `:rows`.
+  either a regular list or a LiveView stream (see `Phoenix.LiveView.stream/4`)
+  for `:rows`.
 
       <.table id="users" rows={@users}>
         <:col :let={user} label="id">{user.id}</:col>
