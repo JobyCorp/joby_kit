@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## v0.2.1
+
+Two rendering fixes, both in `CoreComponents`:
 
 * `flash/1`: every toast gets a usable `id` again. `attr :id` already
   puts `:id` in assigns, so the `assign_new/3` default never fired and
@@ -12,6 +14,12 @@
   never faded out. The `lv:clear-flash` push runs first, so the flash
   still cleared — which is how this stayed hidden behind a
   working-looking dismiss.
+* `table/1`: action cell gains `whitespace-nowrap`. Wrappable button
+  text let the cell under-report min-content under the `w-0` width
+  hack, so action buttons painted past the table edge on full-width
+  tables. Host apps carrying a scoped nowrap override for
+  `[data-component="JobyKit.CoreComponents.table"]` can drop it after
+  upgrading.
 
 ## v0.2.0
 
