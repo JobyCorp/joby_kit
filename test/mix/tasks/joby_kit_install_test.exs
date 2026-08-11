@@ -15,15 +15,29 @@ defmodule Mix.Tasks.JobyKit.InstallTest do
       assert manifest =~ "alias DemoAppWeb.DesignPreviews"
 
       # The kit ships scaffolding pre-registered against JobyKit.CoreComponents.
-      assert manifest =~ "component CoreComponents, :button,"
-      assert manifest =~ "component CoreComponents, :card,"
-      assert manifest =~ "component CoreComponents, :icon,"
-      assert manifest =~ "component CoreComponents, :input,"
-      assert manifest =~ "component CoreComponents, :flash,"
+      # All nine, not just the obvious five: header/list/table/flash_group were
+      # shipped-but-unregistered through 0.2.2, so agents following the build
+      # order couldn't discover half the kit.
+      for name <- ~w(button card icon input flash flash_group header list table) do
+        assert manifest =~ "component CoreComponents, :#{name},",
+               "expected #{name} to be registered in the generated manifest"
+      end
 
-      # daisy_overrides points at the kit's anchors, not the host's.
+      # daisy_overrides points at the kit's anchors, not the host's, and
+      # reports every primitive the kit actually wraps.
       assert manifest =~ ~s|"#jobykit-component-jobykit-corecomponents-button"|
       assert manifest =~ ~s|"#jobykit-component-jobykit-corecomponents-card"|
+      assert manifest =~ ~s|"#jobykit-component-jobykit-corecomponents-table"|
+      assert manifest =~ ~s|"#jobykit-component-jobykit-corecomponents-flash_group"|
+
+      # Every registered entry that declares a preview must have one defined,
+      # or /design 500s on the missing function.
+      previews_src = File.read!("lib/demo_app_web/design_previews.ex")
+
+      for [_, fun] <- Regex.scan(~r/preview: &DesignPreviews\.(\w+)\/1/, manifest) do
+        assert previews_src =~ "def #{fun}(assigns)",
+               "manifest references DesignPreviews.#{fun}/1 but it is not defined"
+      end
 
       previews = File.read!("lib/demo_app_web/design_previews.ex")
       assert previews =~ "defmodule DemoAppWeb.DesignPreviews do"
@@ -34,6 +48,9 @@ defmodule Mix.Tasks.JobyKit.InstallTest do
       assert previews =~ "def icon_preview(assigns)"
       assert previews =~ "def input_preview(assigns)"
       assert previews =~ "def flash_preview(assigns)"
+      assert previews =~ "def header_preview(assigns)"
+      assert previews =~ "def list_preview(assigns)"
+      assert previews =~ "def table_preview(assigns)"
 
       design_live = File.read!("lib/demo_app_web/live/design_system_live.ex")
       assert design_live =~ "defmodule DemoAppWeb.DesignSystemLive do"

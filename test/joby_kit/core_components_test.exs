@@ -357,6 +357,195 @@ defmodule JobyKit.CoreComponentsTest do
     end
   end
 
+  # Every host form goes through the FormField clause; the raw name/value
+  # mode above is the exception, not the rule.
+  describe "input with a Phoenix.HTML.FormField" do
+    test "derives id, name, and value from the field" do
+      assigns = %{field: to_form(%{"email" => "ada@example.com"}, as: :user)[:email]}
+
+      html =
+        rendered_to_string(
+          ~H|<CoreComponents.input field={@field} type="email" label="Email" />|
+        )
+
+      assert html =~ ~s|id="user_email"|
+      assert html =~ ~s|name="user[email]"|
+      assert html =~ ~s|value="ada@example.com"|
+      assert html =~ "Email"
+    end
+
+    test "an explicit id wins over the field's" do
+      assigns = %{field: to_form(%{"email" => ""}, as: :user)[:email]}
+
+      html = rendered_to_string(~H|<CoreComponents.input field={@field} id="custom" />|)
+
+      assert html =~ ~s|id="custom"|
+      # the name still comes from the field
+      assert html =~ ~s|name="user[email]"|
+    end
+
+    test "renders translated errors once the field has been used" do
+      form = to_form(%{"email" => "nope"}, as: :user, errors: [email: {"is invalid", []}])
+      assigns = %{field: form[:email]}
+
+      html = rendered_to_string(~H|<CoreComponents.input field={@field} label="Email" />|)
+
+      assert html =~ "is invalid"
+      assert html =~ "input-error"
+    end
+
+    test "suppresses errors on a field the user has not touched" do
+      # used_input?/1 gates this: params carry no "email" key, so the error
+      # exists on the changeset but must not render yet.
+      form = to_form(%{}, as: :user, errors: [email: {"is invalid", []}])
+      assigns = %{field: form[:email]}
+
+      html = rendered_to_string(~H|<CoreComponents.input field={@field} label="Email" />|)
+
+      refute html =~ "is invalid"
+      refute html =~ "input-error"
+    end
+
+    test "an array-field cast error renders instead of crashing the form" do
+      # The P0 fixed in 0.2.3, exercised through the path a host actually
+      # takes: Ecto attaches non-String.Chars opts to array-field cast
+      # errors, and translate_error/1 used to raise on them mid-render.
+      form =
+        to_form(%{"tags" => "x"},
+          as: :post,
+          errors: [tags: {"is invalid", [type: {:array, :string}, validation: :cast]}]
+        )
+
+      assigns = %{field: form[:tags]}
+
+      html = rendered_to_string(~H|<CoreComponents.input field={@field} label="Tags" />|)
+
+      assert html =~ "is invalid"
+    end
+
+    test "multiple appends [] to the derived name" do
+      assigns = %{field: to_form(%{"tags" => ["a"]}, as: :post)[:tags]}
+
+      html =
+        rendered_to_string(
+          ~H|<CoreComponents.input field={@field} type="select" multiple options={[a: "a"]} />|
+        )
+
+      assert html =~ ~s|name="post[tags][]"|
+    end
+  end
+
+  describe "table with a LiveView stream" do
+    setup do
+      # stream/4 attaches an after-render hook, so the socket needs a real
+      # lifecycle in :private — a bare %Socket{} has only :live_temp.
+      socket = %Phoenix.LiveView.Socket{
+        private: %{live_temp: %{}, lifecycle: %Phoenix.LiveView.Lifecycle{}}
+      }
+
+      socket =
+        Phoenix.LiveView.stream(socket, :users, [
+          %{id: 1, name: "Ada"},
+          %{id: 2, name: "Alan"}
+        ])
+
+      %{stream: socket.assigns.streams.users}
+    end
+
+    test "marks the tbody for stream updates and derives row dom ids", %{stream: stream} do
+      assigns = %{stream: stream}
+
+      html =
+        rendered_to_string(~H"""
+        <CoreComponents.table id="users" rows={@stream}>
+          <:col :let={{_id, user}} label="Name">{user.name}</:col>
+        </CoreComponents.table>
+        """)
+
+      assert html =~ ~s|phx-update="stream"|
+      assert html =~ ~s|id="users"|
+      assert html =~ ~s|id="users-1"|
+      assert html =~ ~s|id="users-2"|
+      assert html =~ "Ada"
+      assert html =~ "Alan"
+    end
+
+    test "the col slot receives {dom_id, item} tuples, not bare items", %{stream: stream} do
+      # Worth pinning: the doc example's `:let={user}` + `user.name` raises
+      # under a stream. Callers must destructure or pass row_item.
+      assigns = %{stream: stream}
+
+      assert_raise BadMapError, fn ->
+        rendered_to_string(~H"""
+        <CoreComponents.table id="users" rows={@stream}>
+          <:col :let={user} label="Name">{user.name}</:col>
+        </CoreComponents.table>
+        """)
+      end
+    end
+
+    test "row_item can unwrap the tuple for callers who prefer bare items", %{stream: stream} do
+      assigns = %{stream: stream}
+
+      html =
+        rendered_to_string(~H"""
+        <CoreComponents.table id="users" rows={@stream} row_item={fn {_id, user} -> user end}>
+          <:col :let={user} label="Name">{user.name}</:col>
+        </CoreComponents.table>
+        """)
+
+      assert html =~ "Ada"
+      assert html =~ ~s|id="users-1"|
+    end
+  end
+
+  describe "table with a plain list" do
+    test "omits the stream attribute entirely" do
+      assigns = %{rows: [%{id: 1, name: "Ada"}]}
+
+      html =
+        rendered_to_string(~H"""
+        <CoreComponents.table id="users" rows={@rows}>
+          <:col :let={user} label="Name">{user.name}</:col>
+        </CoreComponents.table>
+        """)
+
+      refute html =~ "phx-update"
+      assert html =~ "Ada"
+    end
+
+    test "row_click makes the data cells clickable but not the action cell" do
+      assigns = %{rows: [%{id: 1, name: "Ada"}]}
+
+      html =
+        rendered_to_string(~H"""
+        <CoreComponents.table id="users" rows={@rows} row_click={fn row -> "pick-#{row.id}" end}>
+          <:col :let={user} label="Name">{user.name}</:col>
+          <:action :let={user}>edit-{user.id}</:action>
+        </CoreComponents.table>
+        """)
+
+      assert html =~ "hover:cursor-pointer"
+      assert html =~ "pick-1"
+      assert html =~ "edit-1"
+      # The action column header is screen-reader only.
+      assert html =~ "sr-only"
+    end
+
+    test "row_id overrides the generated row identifier" do
+      assigns = %{rows: [%{id: 7, name: "Ada"}]}
+
+      html =
+        rendered_to_string(~H"""
+        <CoreComponents.table id="users" rows={@rows} row_id={fn row -> "u-#{row.id}" end}>
+          <:col :let={user} label="Name">{user.name}</:col>
+        </CoreComponents.table>
+        """)
+
+      assert html =~ ~s|id="u-7"|
+    end
+  end
+
   defp count(haystack, needle), do: length(String.split(haystack, needle)) - 1
 
   # The class attribute of the first (root) element in the rendered markup.
