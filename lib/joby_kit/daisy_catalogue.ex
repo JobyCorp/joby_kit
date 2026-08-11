@@ -1,4 +1,8 @@
 defmodule JobyKit.DaisyCatalogue do
+  # The daisyUI release this catalogue was verified against. Bump it in the
+  # same commit that reconciles entries with a new daisy version.
+  @daisy_version "5.7.16"
+
   @moduledoc """
   The canonical daisyUI primitive catalogue — every component daisy ships,
   organized by daisy's own categories.
@@ -7,6 +11,14 @@ defmodule JobyKit.DaisyCatalogue do
   the daisy class string, a default status (`:available` for normal
   primitives or `:reference` for ones that are listed for awareness only),
   and an optional note.
+
+  ## daisyUI version
+
+  The catalogue describes daisyUI #{@daisy_version} (see `daisy_version/0`).
+  Entries introduced after 5.0 carry a `:since` key and say so in their
+  note — a host pinned to an older daisy bundle will find those classes
+  absent from its CSS. `assets/vendor/daisyui.js` is vendored per host,
+  so check the host's own bundle before reaching for a `:since` entry.
 
   Hosts that have wrapped a primitive declare it via `daisy_overrides/0` on
   their manifest module:
@@ -29,7 +41,7 @@ defmodule JobyKit.DaisyCatalogue do
       components: [
         %{id: :button, name: "Button", classes: "btn", default_status: :available},
         %{id: :dropdown, name: "Dropdown", classes: "dropdown", default_status: :available},
-        %{id: :fab, name: "FAB / Speed Dial", classes: "fab", default_status: :reference, note: "Mobile floating action."},
+        %{id: :fab, name: "FAB / Speed Dial", docs_slug: "fab", classes: "fab", default_status: :reference, note: "Mobile floating action."},
         %{id: :modal, name: "Modal", classes: "modal", default_status: :available},
         %{id: :swap, name: "Swap", classes: "swap", default_status: :available},
         %{id: :theme_controller, name: "Theme Controller", classes: "theme-controller", default_status: :available}
@@ -44,15 +56,17 @@ defmodule JobyKit.DaisyCatalogue do
         %{id: :badge, name: "Badge", classes: "badge", default_status: :available},
         %{id: :card, name: "Card", classes: "card", default_status: :available},
         %{id: :carousel, name: "Carousel", classes: "carousel", default_status: :reference},
-        %{id: :chat_bubble, name: "Chat bubble", classes: "chat / chat-bubble", default_status: :available},
+        %{id: :chat_bubble, name: "Chat bubble", docs_slug: "chat", classes: "chat / chat-bubble", default_status: :available},
         %{id: :collapse, name: "Collapse", classes: "collapse", default_status: :available},
         %{id: :countdown, name: "Countdown", classes: "countdown", default_status: :reference},
         %{id: :diff, name: "Diff", classes: "diff", default_status: :reference},
+        %{id: :hover_gallery, name: "Hover Gallery", classes: "hover-gallery", default_status: :reference, since: "5.1", note: "Requires daisyUI 5.1+."},
         %{id: :kbd, name: "Kbd", classes: "kbd", default_status: :available},
         %{id: :list, name: "List", classes: "list", default_status: :available},
         %{id: :stat, name: "Stat", classes: "stats / stat", default_status: :available},
         %{id: :status, name: "Status", classes: "status", default_status: :available},
         %{id: :table, name: "Table", classes: "table", default_status: :available},
+        %{id: :text_rotate, name: "Text Rotate", classes: "text-rotate", default_status: :reference, since: "5.5", note: "Requires daisyUI 5.5+."},
         %{id: :timeline, name: "Timeline", classes: "timeline", default_status: :available}
       ]
     },
@@ -63,6 +77,7 @@ defmodule JobyKit.DaisyCatalogue do
         %{id: :breadcrumbs, name: "Breadcrumbs", classes: "breadcrumbs", default_status: :available},
         %{id: :dock, name: "Dock", classes: "dock", default_status: :reference, note: "Mobile-style bottom dock."},
         %{id: :link, name: "Link", classes: "link", default_status: :available},
+        %{id: :mega_menu, name: "Mega Menu", docs_slug: "megamenu", classes: "megamenu", default_status: :reference, since: "5.6", note: "Requires daisyUI 5.6+."},
         %{id: :menu, name: "Menu", classes: "menu", default_status: :available},
         %{id: :navbar, name: "Navbar", classes: "navbar", default_status: :available},
         %{id: :pagination, name: "Pagination", classes: "join + buttons", default_status: :available, note: "Compose join with buttons for paged controls."},
@@ -93,11 +108,12 @@ defmodule JobyKit.DaisyCatalogue do
         %{id: :file_input, name: "File Input", classes: "file-input", default_status: :available},
         %{id: :filter, name: "Filter", classes: "filter", default_status: :available},
         %{id: :label, name: "Label", classes: "label", default_status: :available},
+        %{id: :otp, name: "OTP", classes: "otp", default_status: :available, since: "5.6", note: "One-time-password input. Requires daisyUI 5.6+."},
         %{id: :radio, name: "Radio", classes: "radio", default_status: :available},
         %{id: :range, name: "Range", classes: "range", default_status: :available},
         %{id: :rating, name: "Rating", classes: "rating", default_status: :reference},
         %{id: :select, name: "Select", classes: "select", default_status: :available},
-        %{id: :text_input, name: "Text Input", classes: "input", default_status: :available},
+        %{id: :text_input, name: "Text Input", docs_slug: "input", classes: "input", default_status: :available},
         %{id: :textarea, name: "Textarea", classes: "textarea", default_status: :available},
         %{id: :toggle, name: "Toggle", classes: "toggle", default_status: :available},
         %{id: :validator, name: "Validator", classes: "validator", default_status: :available}
@@ -108,9 +124,11 @@ defmodule JobyKit.DaisyCatalogue do
       description: "Page-level chrome, dividers, sidebars, and grouping.",
       components: [
         %{id: :divider, name: "Divider", classes: "divider", default_status: :available},
-        %{id: :drawer, name: "Drawer sidebar", classes: "drawer", default_status: :reference, note: "Often replaced by custom layouts."},
+        %{id: :aura, name: "Aura", classes: "aura", default_status: :reference, since: "5.6", note: "Decorative glow. Requires daisyUI 5.6+."},
+        %{id: :drawer, name: "Drawer sidebar", docs_slug: "drawer", classes: "drawer", default_status: :reference, note: "Often replaced by custom layouts."},
         %{id: :footer, name: "Footer", classes: "footer", default_status: :reference},
         %{id: :hero, name: "Hero", classes: "hero", default_status: :reference, note: "Marketing-style; product surfaces typically use card."},
+        %{id: :hover_3d, name: "Hover 3D", classes: "hover-3d", default_status: :reference, since: "5.5", note: "Decorative tilt. Requires daisyUI 5.5+."},
         %{id: :indicator, name: "Indicator", classes: "indicator", default_status: :available},
         %{id: :join, name: "Join", classes: "join", default_status: :available, note: "Group buttons or inputs for segmented controls."},
         %{id: :mask, name: "Mask", classes: "mask", default_status: :reference, note: "Decorative shape masks."},
@@ -121,10 +139,10 @@ defmodule JobyKit.DaisyCatalogue do
       name: "Mockup",
       description: "Decorative containers; useful for product screenshots and demos.",
       components: [
-        %{id: :browser_mockup, name: "Browser mockup", classes: "mockup-browser", default_status: :reference},
-        %{id: :code_mockup, name: "Code mockup", classes: "mockup-code", default_status: :reference},
-        %{id: :phone_mockup, name: "Phone mockup", classes: "mockup-phone", default_status: :reference},
-        %{id: :window_mockup, name: "Window mockup", classes: "mockup-window", default_status: :reference}
+        %{id: :browser_mockup, name: "Browser mockup", docs_slug: "mockup-browser", classes: "mockup-browser", default_status: :reference},
+        %{id: :code_mockup, name: "Code mockup", docs_slug: "mockup-code", classes: "mockup-code", default_status: :reference},
+        %{id: :phone_mockup, name: "Phone mockup", docs_slug: "mockup-phone", classes: "mockup-phone", default_status: :reference},
+        %{id: :window_mockup, name: "Window mockup", docs_slug: "mockup-window", classes: "mockup-window", default_status: :reference}
       ]
     }
   ]
@@ -140,10 +158,14 @@ defmodule JobyKit.DaisyCatalogue do
   attaching the wrapper label and anchor for cross-linking.
   """
   def merged(manifest_module) do
+    # Code.ensure_loaded? first: function_exported?/3 answers false for a
+    # module that simply hasn't been loaded yet, which silently drops every
+    # override and shows wrapped primitives as unwrapped.
     overrides =
-      if function_exported?(manifest_module, :daisy_overrides, 0),
-        do: manifest_module.daisy_overrides(),
-        else: %{}
+      if Code.ensure_loaded?(manifest_module) and
+           function_exported?(manifest_module, :daisy_overrides, 0),
+         do: manifest_module.daisy_overrides(),
+         else: %{}
 
     Enum.map(@categories, fn category ->
       Map.update!(category, :components, fn components ->
@@ -169,6 +191,15 @@ defmodule JobyKit.DaisyCatalogue do
     end
   end
 
+  @doc """
+  The daisyUI release this catalogue was verified against.
+
+  Hosts vendor their own `assets/vendor/daisyui.js`, so this is the
+  version the catalogue *describes*, not necessarily the one a given app
+  ships. Compare the two before trusting a `:since` entry.
+  """
+  def daisy_version, do: @daisy_version
+
   @doc "Slug helper: turns a category or component name into a stable URL fragment."
   def slug(name) do
     name
@@ -177,16 +208,29 @@ defmodule JobyKit.DaisyCatalogue do
     |> String.trim("-")
   end
 
-  @doc "Returns the daisyUI documentation URL for a primitive name."
-  def docs_url(name) do
-    sub =
-      name
-      |> String.downcase()
-      |> String.replace("/", " ")
-      |> String.replace(~r/[^a-z0-9]+/, "-")
-      |> String.trim("-")
+  @doc """
+  Returns the daisyUI documentation URL for a primitive.
 
-    "https://daisyui.com/components/" <> sub <> "/"
+  Pass a catalogue entry to honour its `:docs_slug`; passing a bare name
+  derives the slug from the display name, which is right for most
+  entries but 404s wherever our label differs from daisy's URL (e.g.
+  "Chat bubble" → `/components/chat/`). Prefer the entry form.
+  """
+  def docs_url(%{} = component) do
+    slug = Map.get(component, :docs_slug) || derive_docs_slug(component.name)
+    "https://daisyui.com/components/" <> slug <> "/"
+  end
+
+  def docs_url(name) when is_binary(name) do
+    "https://daisyui.com/components/" <> derive_docs_slug(name) <> "/"
+  end
+
+  defp derive_docs_slug(name) do
+    name
+    |> String.downcase()
+    |> String.replace("/", " ")
+    |> String.replace(~r/[^a-z0-9]+/, "-")
+    |> String.trim("-")
   end
 
   @doc """
@@ -274,8 +318,10 @@ defmodule JobyKit.DaisyCatalogue do
   end
 
   def demo(%{id: :card} = assigns) do
+    # `card-sm`, not v4's `card-compact` — daisyUI 5 replaced the single
+    # compact modifier with the card-xs/sm/md/lg/xl scale.
     ~H"""
-    <div class="card card-compact w-full bg-base-200/60 text-xs">
+    <div class="card card-sm w-full bg-base-200/60 text-xs">
       <div class="card-body">
         <p class="card-title text-sm">Card title</p>
       </div>
@@ -562,9 +608,12 @@ defmodule JobyKit.DaisyCatalogue do
   end
 
   def demo(%{id: :label} = assigns) do
+    # daisyUI 5 dropped v4's `form-control` / `label-text` pairing; the
+    # label class itself now styles its text children.
     ~H"""
     <label class="label cursor-pointer text-xs">
-      <span class="label-text">Field label</span>
+      <input type="checkbox" class="checkbox checkbox-xs" checked />
+      Field label
     </label>
     """
   end
@@ -722,6 +771,63 @@ defmodule JobyKit.DaisyCatalogue do
     ~H"""
     <div class="mockup-window w-full border border-base-300 bg-base-200/60 text-[0.6rem]">
       <div class="bg-base-100 px-2 py-1">window body</div>
+    </div>
+    """
+  end
+
+  # ------------------------------------------------------------------
+  # Post-5.0 additions. These render as plain markup on a host whose
+  # vendored daisy bundle predates the entry's :since — the classes
+  # simply aren't in its CSS.
+
+  def demo(%{id: :otp} = assigns) do
+    ~H"""
+    <div class="otp otp-sm">
+      <input value="4" size="1" readonly />
+      <input value="2" size="1" readonly />
+      <input value="7" size="1" readonly />
+      <input value="9" size="1" readonly />
+    </div>
+    """
+  end
+
+  def demo(%{id: :hover_gallery} = assigns) do
+    ~H"""
+    <div class="hover-gallery h-12 w-full overflow-hidden rounded">
+      <div class="size-full bg-primary/30" />
+      <div class="size-full bg-secondary/30" />
+      <div class="size-full bg-accent/30" />
+    </div>
+    """
+  end
+
+  def demo(%{id: :hover_3d} = assigns) do
+    ~H"""
+    <div class="hover-3d size-12 rounded bg-base-300/70 text-[0.6rem]">
+      <div class="flex size-full items-center justify-center">tilt</div>
+    </div>
+    """
+  end
+
+  def demo(%{id: :text_rotate} = assigns) do
+    ~H"""
+    <span class="text-rotate text-xs font-semibold">daisyUI</span>
+    """
+  end
+
+  def demo(%{id: :aura} = assigns) do
+    ~H"""
+    <div class="aura aura-sm size-12 rounded bg-base-300/70" />
+    """
+  end
+
+  def demo(%{id: :mega_menu} = assigns) do
+    ~H"""
+    <div class="megamenu megamenu-sm text-xs">
+      <ul>
+        <li><a>Products</a></li>
+        <li><a>Docs</a></li>
+      </ul>
     </div>
     """
   end

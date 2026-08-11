@@ -379,7 +379,7 @@ defmodule JobyKit.PageComponent do
 
       <div class="flex flex-wrap items-center justify-between gap-2 text-xs">
         <a
-          href={DaisyCatalogue.docs_url(@component.name)}
+          href={DaisyCatalogue.docs_url(@component)}
           class="link link-hover text-base-content/65"
           target="_blank"
           rel="noopener noreferrer"

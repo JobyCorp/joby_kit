@@ -1,5 +1,43 @@
 # Changelog
 
+## Unreleased
+
+Reconciles `DaisyCatalogue` with daisyUI 5.7.16, verified against the
+published package rather than the docs prose.
+
+* **Two demos taught removed daisyUI 4 classes.** The card demo used
+  `card-compact` (v5 replaced the single compact modifier with the
+  `card-xs/sm/md/lg/xl` scale) and the label demo used `label-text` (v5
+  dropped the `form-control`/`label-text` pairing entirely). Both are
+  absent from 5.7.16's CSS — confirmed by grepping the shipped
+  `components/*.css`. The page that exists to be the reference was
+  teaching a dead API.
+* **Nine docs links 404'd.** `docs_url/1` derived the URL from the
+  display name, which breaks wherever our label differs from daisy's
+  page name — "Chat bubble" → `/components/chat-bubble/`, "Text Input"
+  → `/components/text-input/`, all four mockups reversed
+  (`browser-mockup` vs `mockup-browser`), and so on. Entries now carry
+  an optional `:docs_slug`, and `docs_url/1` accepts a catalogue entry
+  (the bare-name form still works). Every one of the 68 links was
+  checked against daisyui.com and now resolves.
+* **Six primitives were missing**, all added after 5.0: `hover-gallery`
+  (5.1), `hover-3d` and `text-rotate` (5.5), `aura`, `megamenu`, and
+  `otp` (5.6). Each carries a `:since` key and says so in its note,
+  because hosts vendor their own `assets/vendor/daisyui.js` — a host on
+  an older bundle simply does not have those classes. `daisy_version/0`
+  now reports which daisy release the catalogue was verified against.
+* **`merged/1` silently dropped every daisy override for a manifest
+  module that happened not to be loaded yet.** `function_exported?/3`
+  answers false for an unloaded module, so wrapped primitives showed as
+  unwrapped depending on load order. Now guarded with
+  `Code.ensure_loaded?/1`.
+* Tests: a `:external`-tagged case verifies every docs link over the
+  network (excluded by default; `mix test --include external`), plus
+  guards that no demo reintroduces a removed v4 class and that every
+  `:since` entry names its version in its note. Also fixed a
+  seed-dependent flake in the new lint-task tests, where Mix's own
+  `==> app` banner interleaved with captured task output.
+
 ## v0.2.3
 
 Fixes a crash that takes down any form with an array-typed field, plus

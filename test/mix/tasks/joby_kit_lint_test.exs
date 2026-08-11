@@ -24,12 +24,18 @@ defmodule Mix.Tasks.JobyKit.LintTest do
 
   defp run(args), do: Mix.Tasks.JobyKit.Lint.run(args)
 
+  # Mix prints its own `==> app` project banner through the shell, and with
+  # Mix.Shell.Process that lands in this mailbox interleaved with the task's
+  # output. It appears once per run, so whichever test happens to go first
+  # under a given seed inherits it — which made the JSON tests fail on some
+  # seeds and not others. Drop it; it is never task output.
   defp drain_output do
     receive do
       {:mix_shell, :info, [msg]} -> [msg | drain_output()]
     after
       0 -> []
     end
+    |> Enum.reject(&String.starts_with?(&1, "==> "))
   end
 
   defp output(args) do

@@ -67,10 +67,99 @@ defmodule JobyKit.DaisyCatalogueTest do
     end
   end
 
-  test "docs_url/1 builds a daisyUI docs URL from a primitive name" do
+  test "docs_url/1 derives a slug from a bare primitive name" do
     assert DaisyCatalogue.docs_url("Button") == "https://daisyui.com/components/button/"
+    assert DaisyCatalogue.docs_url("Radial progress") == "https://daisyui.com/components/radial-progress/"
+  end
 
-    assert DaisyCatalogue.docs_url("FAB / Speed Dial") ==
-             "https://daisyui.com/components/fab-speed-dial/"
+  test "docs_url/1 honours an entry's docs_slug over its display name" do
+    # Deriving from the display name 404s wherever our label differs from
+    # daisy's URL. Each of these was a live 404 before the override existed;
+    # the replacements were verified against daisyui.com.
+    expected = %{
+      fab: "fab",
+      chat_bubble: "chat",
+      text_input: "input",
+      drawer: "drawer",
+      browser_mockup: "mockup-browser",
+      code_mockup: "mockup-code",
+      phone_mockup: "mockup-phone",
+      window_mockup: "mockup-window",
+      mega_menu: "megamenu"
+    }
+
+    entries =
+      for category <- DaisyCatalogue.categories(),
+          component <- category.components,
+          into: %{},
+          do: {component.id, component}
+
+    for {id, slug} <- expected do
+      assert DaisyCatalogue.docs_url(entries[id]) ==
+               "https://daisyui.com/components/#{slug}/",
+             "#{id} should document against /components/#{slug}/"
+    end
+  end
+
+  @tag :external
+  test "every catalogue docs_url resolves on daisyui.com" do
+    # Excluded by default (needs network). Run with:
+    #   mix test --include external
+    # This is the only honest way to catch slug drift — the derived slug
+    # can't be validated offline, and daisy renames doc pages between
+    # minors. Eight entries were live 404s before docs_slug existed.
+    broken =
+      for category <- DaisyCatalogue.categories(),
+          component <- category.components,
+          url = DaisyCatalogue.docs_url(component),
+          {out, 0} = System.cmd("curl", ["-s", "-o", "/dev/null", "-w", "%{http_code}", "-L", "--max-time", "10", url]),
+          out != "200" do
+        "#{component.id} -> #{url} (HTTP #{out})"
+      end
+
+    assert broken == [], "broken daisyUI docs links:\n" <> Enum.join(broken, "\n")
+  end
+
+  test "declares the daisyUI version the catalogue was verified against" do
+    assert DaisyCatalogue.daisy_version() =~ ~r/^\d+\.\d+\.\d+$/
+  end
+
+  test "post-5.0 primitives are present and marked with the version that added them" do
+    # A host on an older vendored bundle will not have these classes at all,
+    # so the catalogue has to say which daisy release introduced each.
+    since =
+      for category <- DaisyCatalogue.categories(),
+          component <- category.components,
+          Map.has_key?(component, :since),
+          into: %{},
+          do: {component.id, component.since}
+
+    assert since[:hover_gallery] == "5.1"
+    assert since[:hover_3d] == "5.5"
+    assert since[:text_rotate] == "5.5"
+    assert since[:aura] == "5.6"
+    assert since[:mega_menu] == "5.6"
+    assert since[:otp] == "5.6"
+  end
+
+  test "every :since entry says so in its note, so it renders on the page" do
+    for category <- DaisyCatalogue.categories(),
+        component <- category.components,
+        version = component[:since] do
+      assert component[:note] =~ version,
+             "#{component.id} is :since #{version} but its note does not mention it"
+    end
+  end
+
+  test "no demo uses a class daisyUI 4 removed" do
+    # card-compact and label-text were dropped in daisy 5; demos carrying
+    # them teach a dead API on the page that is meant to be the reference.
+    for category <- DaisyCatalogue.categories(),
+        component <- category.components do
+      html = render_component(&DaisyCatalogue.demo/1, id: component.id)
+
+      refute html =~ "card-compact", "#{component.id} demo uses removed card-compact"
+      refute html =~ "label-text", "#{component.id} demo uses removed label-text"
+    end
   end
 end
