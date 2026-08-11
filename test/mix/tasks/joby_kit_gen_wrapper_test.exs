@@ -164,8 +164,8 @@ defmodule Mix.Tasks.JobyKit.Gen.WrapperTest do
           "lib/demo_app_web/design_manifest.ex",
           File.read!("lib/demo_app_web/design_manifest.ex")
           |> String.replace(
-            "  # ---------------------------------------------------------------------- core",
-            "  component(CoreComponents, :metric_tile, category: :core, summary: \"x\", preview: &DesignPreviews.metric_tile_preview/1)\n\n  # ---------------------------------------------------------------------- core"
+            "  # ----------------------------------------------------------------- composite",
+            "  component(CoreComponents, :metric_tile, category: :core, summary: \"x\", preview: &DesignPreviews.metric_tile_preview/1)\n\n  # ----------------------------------------------------------------- composite"
           )
         )
 

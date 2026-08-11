@@ -36,13 +36,31 @@ defmodule JobyKit.ManifestControllerTest do
     assert Enum.map(payload["categories"], & &1["id"]) == ["core", "composite"]
 
     # Components present (both :core in this test manifest).
-    assert length(payload["components"]) == 2
+    # The kit's entries plus this manifest's two. /design.json is the
+    # single source of truth for agents, so it spans both surfaces.
+    kit_count = length(JobyKit.KitManifest.entries())
+    assert length(payload["components"]) == kit_count + 2
 
-    button = Enum.find(payload["components"], &(&1["function"] == "button"))
-    assert button["module"] == "JobyKit.Test.Components"
-    assert button["category"] == "core"
-    assert button["daisy_basis"] == "btn"
-    assert is_list(button["attrs"])
+    names = Enum.map(payload["components"], & &1["data_component"])
+    assert "JobyKit.CoreComponents.button" in names
+
+    # Look up by data_component, not function name: the kit ships a
+    # `button` too, so matching on the name alone finds the wrong one.
+    host_button =
+      Enum.find(
+        payload["components"],
+        &(&1["data_component"] == "JobyKit.Test.Components.button")
+      )
+
+    assert host_button["module"] == "JobyKit.Test.Components"
+    assert host_button["category"] == "core"
+    assert host_button["daisy_basis"] == "btn"
+    assert is_list(host_button["attrs"])
+
+    kit_button =
+      Enum.find(payload["components"], &(&1["data_component"] == "JobyKit.CoreComponents.button"))
+
+    assert kit_button["module"] == "JobyKit.CoreComponents"
   end
 
   test "show/2 returns a 500 JSON when no manifest is configured" do

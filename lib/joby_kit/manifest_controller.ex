@@ -69,8 +69,23 @@ defmodule JobyKit.ManifestController do
             description: manifest.category_description(category)
           }
         end),
-      components: Enum.map(manifest.entries(), &serialize_entry/1)
+      components: Enum.map(all_entries(manifest), &serialize_entry/1)
     }
+  end
+
+  # The kit's entries plus the host's. Agents read this endpoint as the
+  # single source of truth, so it has to cover both surfaces — and since
+  # the kit now registers its own components, a host that still lists
+  # them (every install before 0.3.2 did) would otherwise produce
+  # duplicates. Kit entries win; host copies of the same component are
+  # dropped.
+  defp all_entries(manifest) do
+    kit = JobyKit.KitManifest.entries()
+    kit_keys = MapSet.new(kit, & &1.data_component)
+
+    host = Enum.reject(manifest.entries(), &MapSet.member?(kit_keys, &1.data_component))
+
+    kit ++ host
   end
 
   defp serialize_entry(entry) do

@@ -12,6 +12,36 @@
 
 ### `/design` is the kit's page, structurally
 
+**The kit now owns its own page end to end.** `page_component/1` renders
+`JobyKit.KitManifest` — the kit's own registrations, with previews from
+`JobyKit.Previews` — instead of filtering whatever the host declared.
+
+Three things used to drift, and all three were found in the fleet:
+
+* **Which components appear.** Generated files are written once and never
+  updated, so an app installed at 0.1 still advertised the 0.1 inventory.
+  One app showed **8 of the 14** components its kit version shipped, with
+  nothing indicating the other six existed.
+* **What each preview renders.** Previews for kit components lived in the
+  host's `DesignPreviews` and were edited locally, so two apps on the same
+  kit version demonstrated the same `<.button>` with different examples —
+  one missing the icon-button case entirely.
+* **What the summary says.** Same component, different prose per app.
+
+A page that differs per app cannot be the thing an agent learns once.
+
+**Generated apps no longer register kit components.** The install
+template registers only the host's own, and its `daisy_overrides/0`
+starts empty — the kit declares the primitives it wraps, so the
+catalogue is right without the host restating it. `/design.json` merges
+the kit's entries with the host's and drops duplicates, so it remains
+the single source of truth.
+
+**Existing apps need no change.** Kit registrations left in a host
+manifest are ignored for `/design` (the kit's list wins) and de-duplicated
+in `/design.json`. Deleting them is tidy-up, not migration — and worth
+doing, since they otherwise pin a snapshot of an old inventory.
+
 **Which page a component lands on is now decided by who owns the
 module, not by the category the host declared.**
 

@@ -67,15 +67,18 @@ defmodule JobyKit.PageComponentTest do
     kit = render_component(&PageComponent.page_component/1, manifest: ImposterManifest)
     custom = render_component(&PageComponent.custom_page_component/1, manifest: ImposterManifest)
 
-    # The kit's own component is on the kit page.
-    assert kit =~ ~s(data-function="button")
+    # Asserted on the module rather than the function name: the kit ships
+    # a `badge` of its own, so a name-based check would pass for the
+    # wrong reason.
+    refute kit =~ "JobyKit.Test.Components",
+           "a host module reached the kit surface"
 
-    # The host's is not — despite declaring :core.
-    refute kit =~ ~s(data-function="badge")
+    assert kit =~ "JobyKit.CoreComponents.button"
 
-    # It lands on the custom page instead, with no host action required.
-    assert custom =~ ~s(data-function="badge")
-    refute custom =~ ~s(data-function="button")
+    # The host's component lands on the custom page instead, with no
+    # manifest change required of the host.
+    assert custom =~ "JobyKit.Test.Components"
+    refute custom =~ ~s(data-module="JobyKit.CoreComponents")
   end
 
   test "kit_component_modules/0 names what the kit page will show" do

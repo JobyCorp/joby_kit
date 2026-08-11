@@ -28,17 +28,55 @@ defmodule JobyKit.DaisyCatalogueTest do
     end
   end
 
-  test "merged/1 leaves entries at default_status when manifest has no overrides" do
+  test "merged/1 reports the kit's own wrappers even with no host overrides" do
+    # The kit knows what it wraps; a host shouldn't have to declare it.
+    # Before, an app that never wrote daisy_overrides saw every primitive
+    # as unwrapped even though the kit shipped wrappers for a dozen.
     defmodule NoOverridesManifest do
       use JobyKit.Manifest
       category(:core, label: "Core", description: "")
     end
 
     [actions | _] = DaisyCatalogue.merged(NoOverridesManifest)
+
     button = Enum.find(actions.components, &(&1.id == :button))
-    assert button.status == :available
-    assert button.wrapper == nil
-    assert button.anchor == nil
+    assert button.status == :wrapped
+    assert button.wrapper == "<.button>"
+    assert button.anchor =~ "jobykit-corecomponents-button"
+  end
+
+  test "merged/1 leaves primitives the kit does not wrap at their default status" do
+    defmodule StillDefaultManifest do
+      use JobyKit.Manifest
+      category(:core, label: "Core", description: "")
+    end
+
+    catalogue = DaisyCatalogue.merged(StillDefaultManifest)
+
+    tooltip =
+      catalogue
+      |> Enum.flat_map(& &1.components)
+      |> Enum.find(&(&1.id == :tooltip))
+
+    assert tooltip.status == :available
+    assert tooltip.wrapper == nil
+  end
+
+  test "a host override wins over the kit's for the same primitive" do
+    defmodule HostWinsManifest do
+      use JobyKit.Manifest
+      category(:core, label: "Core", description: "")
+
+      def daisy_overrides do
+        %{button: %{wrapper: "<.my_button>", anchor: "#mine"}}
+      end
+    end
+
+    [actions | _] = DaisyCatalogue.merged(HostWinsManifest)
+    button = Enum.find(actions.components, &(&1.id == :button))
+
+    assert button.wrapper == "<.my_button>"
+    assert button.anchor == "#mine"
   end
 
   test "merged/1 flips overridden entries to :wrapped and attaches wrapper + anchor" do

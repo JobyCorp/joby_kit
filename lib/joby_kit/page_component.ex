@@ -39,7 +39,10 @@ defmodule JobyKit.PageComponent do
   attr :custom_path, :string, default: nil
 
   def page_component(assigns) do
-    entries_by_category = entries_owned_by(assigns.manifest, :kit)
+    # The kit's own manifest, not the host's. The host's manifest still
+    # supplies daisy_overrides below, since an app can wrap primitives
+    # the kit doesn't.
+    entries_by_category = JobyKit.KitManifest.by_category()
 
     assigns =
       assigns
@@ -55,7 +58,7 @@ defmodule JobyKit.PageComponent do
       <.agent_redirect_section :if={@custom_path} custom_path={@custom_path} />
       <.wrapper_contract_section rules={@rules} />
       <.component_index_section
-        manifest={@manifest}
+        manifest={JobyKit.KitManifest}
         entries_by_category={@entries_by_category}
         title="Core wrappers"
         description="JobyKit's curated wrapper inventory — one wrapper per daisyUI primitive. Composites and domain components live on the host's custom-designs page and in the JSON manifest."
@@ -156,6 +159,12 @@ defmodule JobyKit.PageComponent do
   # Which page an entry lands on is decided by **who owns the module**,
   # not by the category the host declared.
   #
+  # /design goes further and renders `JobyKit.KitManifest` directly, so
+  # the kit surface does not depend on the host manifest at all — see
+  # that module for why. This filter is what keeps kit components off
+  # the *custom* page when a host also registers them, which every
+  # install before 0.3.2 did.
+  #
   # Category is a free atom the host picks, so the old split let an app
   # register its own component as `:core` and have it render on /design —
   # the page whose whole promise is "identical across every JobyKit
@@ -165,10 +174,10 @@ defmodule JobyKit.PageComponent do
   # be a matter of convention either.
   #
   # Category still groups entries *within* a page.
-  defp entries_owned_by(manifest, ownership) do
+  defp entries_owned_by(manifest, :host) do
     manifest.by_category()
     |> Enum.map(fn {category, entries} ->
-      {category, Enum.filter(entries, &(kit_owned?(&1.module) == (ownership == :kit)))}
+      {category, Enum.reject(entries, &kit_owned?(&1.module))}
     end)
     |> Enum.reject(fn {_category, entries} -> entries == [] end)
   end

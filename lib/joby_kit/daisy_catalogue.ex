@@ -316,17 +316,33 @@ defmodule JobyKit.DaisyCatalogue do
     # Code.ensure_loaded? first: function_exported?/3 answers false for a
     # module that simply hasn't been loaded yet, which silently drops every
     # override and shows wrapped primitives as unwrapped.
-    overrides =
+    # The kit knows which primitives it wraps; the host adds any it wraps
+    # itself. Host entries win on conflict, since an app that has built
+    # its own wrapper for a primitive should link to that one.
+    host_overrides =
       if Code.ensure_loaded?(manifest_module) and
            function_exported?(manifest_module, :daisy_overrides, 0),
          do: manifest_module.daisy_overrides(),
          else: %{}
+
+    overrides = Map.merge(kit_overrides(), host_overrides)
 
     Enum.map(@categories, fn category ->
       Map.update!(category, :components, fn components ->
         Enum.map(components, &resolve(&1, overrides))
       end)
     end)
+  end
+
+  # Guarded because KitManifest is compiled after this module in some
+  # orders, and because a host could call merged/1 very early.
+  defp kit_overrides do
+    if Code.ensure_loaded?(JobyKit.KitManifest) and
+         function_exported?(JobyKit.KitManifest, :daisy_overrides, 0) do
+      JobyKit.KitManifest.daisy_overrides()
+    else
+      %{}
+    end
   end
 
   defp resolve(component, overrides) do

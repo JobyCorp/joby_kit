@@ -11,56 +11,24 @@ defmodule Mix.Tasks.JobyKit.InstallTest do
       manifest = File.read!("lib/demo_app_web/design_manifest.ex")
       assert manifest =~ "defmodule DemoAppWeb.DesignManifest do"
       assert manifest =~ "use JobyKit.Manifest"
-      assert manifest =~ "alias JobyKit.CoreComponents"
-      assert manifest =~ "alias DemoAppWeb.DesignPreviews"
+      # The kit registers its own components now, so the generated
+      # manifest lists only this app's. Before, every install baked in a
+      # snapshot of the kit inventory that then never updated — an app
+      # installed at 0.1 still advertised the 0.1 set.
+      refute manifest =~ "alias JobyKit.CoreComponents"
+      refute manifest =~ "component CoreComponents,"
+      refute manifest =~ "component NavComponent,"
 
-      # The kit ships scaffolding pre-registered against JobyKit.CoreComponents.
-      # All nine, not just the obvious five: header/list/table/flash_group were
-      # shipped-but-unregistered through 0.2.2, so agents following the build
-      # order couldn't discover half the kit.
-      for name <-
-            ~w(button badge card icon input eyebrow flash flash_group header list modal table theme_toggle) do
-        assert manifest =~ "component CoreComponents, :#{name},",
-               "expected #{name} to be registered in the generated manifest"
-      end
-
-      # daisy_overrides points at the kit's anchors, not the host's, and
-      # reports every primitive the kit actually wraps.
-      assert manifest =~ ~s|"#jobykit-component-jobykit-corecomponents-button"|
-      assert manifest =~ ~s|"#jobykit-component-jobykit-corecomponents-card"|
-      assert manifest =~ ~s|"#jobykit-component-jobykit-corecomponents-table"|
-      assert manifest =~ ~s|"#jobykit-component-jobykit-corecomponents-flash_group"|
-      # simple_nav lives in NavComponent, so it needs its own alias + anchor.
-      assert manifest =~ "alias JobyKit.NavComponent"
-      assert manifest =~ "component NavComponent, :simple_nav,"
-      assert manifest =~ ~s|"#jobykit-component-jobykit-navcomponent-simple_nav"|
-
-      # Every registered entry that declares a preview must have one defined,
-      # or /design 500s on the missing function.
-      previews_src = File.read!("lib/demo_app_web/design_previews.ex")
-
-      for [_, fun] <- Regex.scan(~r/preview: &DesignPreviews\.(\w+)\/1/, manifest) do
-        assert previews_src =~ "def #{fun}(assigns)",
-               "manifest references DesignPreviews.#{fun}/1 but it is not defined"
-      end
+      assert manifest =~ "alias DemoAppWeb.CompositeComponents"
+      assert manifest =~ "component CompositeComponents, :empty_state,"
+      assert manifest =~ "def daisy_overrides, do: %{}"
 
       previews = File.read!("lib/demo_app_web/design_previews.ex")
       assert previews =~ "defmodule DemoAppWeb.DesignPreviews do"
       assert previews =~ "use DemoAppWeb, :html"
-      assert previews =~ "alias JobyKit.CoreComponents"
-      assert previews =~ "def button_preview(assigns)"
-      assert previews =~ "def card_preview(assigns)"
-      assert previews =~ "def icon_preview(assigns)"
-      assert previews =~ "def input_preview(assigns)"
-      assert previews =~ "def flash_preview(assigns)"
-      assert previews =~ "def header_preview(assigns)"
-      assert previews =~ "def list_preview(assigns)"
-      assert previews =~ "def table_preview(assigns)"
-      assert previews =~ "def theme_toggle_preview(assigns)"
-      assert previews =~ "def simple_nav_preview(assigns)"
-      assert previews =~ "def badge_preview(assigns)"
-      assert previews =~ "def eyebrow_preview(assigns)"
-      assert previews =~ "def modal_preview(assigns)"
+      # Kit components are previewed by JobyKit.Previews, so /design shows
+      # the same examples in every app.
+      assert previews =~ "def empty_state_preview(assigns)"
 
       design_live = File.read!("lib/demo_app_web/live/design_system_live.ex")
       assert design_live =~ "defmodule DemoAppWeb.DesignSystemLive do"
