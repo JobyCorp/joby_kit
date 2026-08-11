@@ -1,6 +1,58 @@
 # Changelog
 
-## Unreleased
+## Unreleased (0.3.0 line)
+
+**Breaking, on purpose.** See [MIGRATING-0.3.md](MIGRATING-0.3.md) for the
+upgrade, including the list of compensating hacks to delete.
+
+Removes the spacing and typography opinions host apps were routing
+around, and fills in the variants they were hand-rolling. Driven by
+usage data from three consumer apps: adoption turned out to be inversely
+proportional to baked-in opinion — `button`/`input` (shape and behaviour,
+nothing to undo) got hundreds of uses, while `card`/`header`/`list`
+(typography and margin opinions) got bypassed. One app carried 127
+hand-rolled panels against 10 `<.card>` uses; another had zero
+`<.header>` uses and the same header class string pasted ten times.
+
+* **`input/1`: `class` moves to the root.** It landed on the control, so
+  the field group's own box was unreachable — callers resorted to
+  nudging neighbouring elements (`class="mb-0.5"` on an adjacent button
+  that didn't even work). `class` and layout now target the root
+  `<fieldset>`, matching every other wrapper; the new `input_class`
+  styles the control. Global attributes still reach the control, since
+  `placeholder`/`required`/etc. would be meaningless on a fieldset.
+* **`input/1`: no outer margin.** The hardcoded `mb-2` is gone —
+  containers own spacing via `space-y-*`/`gap-*`. Width now works
+  through the root (`class="w-32"`); the control is always `w-full`.
+  The root is a semantic `<fieldset>`, and errors are associated with
+  the control via `aria-invalid` and `aria-describedby`, so screen
+  readers get more than a red border.
+* **`card/1`: body typography is opt-in.** The forced
+  `text-sm text-base-content/70` wrapper is gone, and body content
+  renders as direct children of `card-body` — so the card's own `gap`
+  applies instead of being dead weight behind a single wrapper div.
+  `prose` opts into the old treatment; `body_class` sets your own.
+  `card-actions` lost its hardcoded `mt-3`.
+* **`header/1`: usable at last.** `pb-4` removed; new `:eyebrow` slot
+  (both header-consuming apps hand-rolled one), `level` so a section
+  header stops emitting a second `<h1>`, `size` (`page`/`section`), and
+  `title_class` for apps with their own display face.
+* **`button/1`: tones, `xs`, and shapes.** `variant` takes
+  `soft | primary | neutral | ghost | danger`. Destructive actions can
+  finally read as destructive — previously Revoke, Delete and Purge
+  rendered identically to Refresh. The default is unchanged and is now
+  nameable as `soft` for computed callers. `shape` (`circle`/`square`)
+  covers icon-only buttons, replacing stacks like
+  `btn btn-primary btn-soft btn-sm btn-ghost btn-circle` where four
+  competing classes were resolved only by stylesheet order.
+* **`table/1`: additive hooks.** An `:empty` slot (five pages in one app
+  repeated the `:if={@rows != []}` + `<.empty_state>` pair), `zebra`
+  opt-out, a `size` density enum instead of leaking `table-xs` through
+  `class`, and `data-table-actions` on the action cell so overrides can
+  target it precisely — one app's `:last-child` workaround was hitting a
+  data column on tables with no `:action` slot.
+
+## Unreleased (catalogue)
 
 Reconciles `DaisyCatalogue` with daisyUI 5.7.16, verified against the
 published package rather than the docs prose.

@@ -79,23 +79,55 @@ defmodule JobyKit.CoreComponents do
   `type` passes through, so a non-submitting button inside a form is
   `<.button type="button">`. Omitted, the browser default applies —
   `submit` inside a form.
+
+  ## Tone
+
+  `variant` carries meaning, not just colour — `danger` is how a
+  destructive action reads as destructive:
+
+      <.button variant="danger">Delete workspace</.button>
+      <.button variant="ghost">Dismiss</.button>
+
+  The default (`nil`) is the soft-primary treatment, also nameable as
+  `soft` when the value is computed at runtime.
+
+  ## Icon-only buttons
+
+  `shape` sizes the button to a single glyph. Always give it an
+  accessible name, since there is no text to read:
+
+      <.button shape="circle" variant="ghost" aria-label="Close">
+        <.icon name="hero-x-mark" class="size-4" />
+      </.button>
   """
   attr :rest, :global,
     include: ~w(href navigate patch method download name value disabled type form)
+
   attr :class, :any, default: nil
-  attr :variant, :string, values: ~w(primary)
-  attr :size, :string, values: ~w(sm md lg), default: "md"
+  attr :variant, :string, values: ~w(soft primary neutral ghost danger)
+  attr :size, :string, values: ~w(xs sm md lg), default: "md"
+  attr :shape, :string, values: ~w(circle square)
   slot :inner_block, required: true
 
   def button(%{rest: rest} = assigns) do
-    variants = %{"primary" => "btn-primary", nil => "btn-primary btn-soft"}
-    sizes = %{"sm" => "btn-sm", "md" => nil, "lg" => "btn-lg"}
+    variants = %{
+      nil => "btn-primary btn-soft",
+      "soft" => "btn-primary btn-soft",
+      "primary" => "btn-primary",
+      "neutral" => "btn-neutral",
+      "ghost" => "btn-ghost",
+      "danger" => "btn-error"
+    }
+
+    sizes = %{"xs" => "btn-xs", "sm" => "btn-sm", "md" => nil, "lg" => "btn-lg"}
+    shapes = %{nil => nil, "circle" => "btn-circle", "square" => "btn-square"}
 
     assigns =
       assign(assigns, :class_list, [
         "btn",
         Map.fetch!(variants, assigns[:variant]),
         Map.fetch!(sizes, assigns.size),
+        Map.fetch!(shapes, assigns[:shape]),
         assigns.class
       ])
 
@@ -129,9 +161,27 @@ defmodule JobyKit.CoreComponents do
         Body content goes here.
         <:actions><.button>Open</.button></:actions>
       </.card>
+
+  ## Body content
+
+  The body renders as direct children of `card-body`, so the card's own
+  `gap` spaces whatever you put there — no inner wrapper to fight.
+
+  The card takes no opinion on body typography. `prose={true}` opts into
+  the muted small-text treatment for cards that really are prose;
+  `body_class` sets it yourself.
+
+      <.card prose>Explanatory copy.</.card>
+      <.card body_class="text-base">Dense data, styled by the caller.</.card>
   """
   attr :class, :any, default: nil
+  attr :body_class, :any, default: nil, doc: "Utilities for the card-body element."
   attr :variant, :string, values: ~w(bordered ghost elevated), default: "bordered"
+
+  attr :prose, :boolean,
+    default: false,
+    doc: "Apply the muted small-text treatment to body content."
+
   attr :rest, :global
 
   slot :eyebrow
@@ -158,7 +208,11 @@ defmodule JobyKit.CoreComponents do
       ]}
       {@rest}
     >
-      <div class="card-body gap-2">
+      <div class={[
+        "card-body gap-2",
+        @prose && "text-sm leading-relaxed text-base-content/70",
+        @body_class
+      ]}>
         <p
           :if={@eyebrow != []}
           class="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-base-content/55"
@@ -168,10 +222,8 @@ defmodule JobyKit.CoreComponents do
         <h3 :if={@title != []} class="card-title text-lg font-semibold leading-tight">
           {render_slot(@title)}
         </h3>
-        <div class="text-sm leading-relaxed text-base-content/70">
-          {render_slot(@inner_block)}
-        </div>
-        <div :if={@actions != []} class="card-actions mt-3">
+        {render_slot(@inner_block)}
+        <div :if={@actions != []} class="card-actions">
           {render_slot(@actions)}
         </div>
       </div>
@@ -182,26 +234,55 @@ defmodule JobyKit.CoreComponents do
   # ------------------------------------------------------------- header
 
   @doc """
-  Page or section header with optional subtitle and actions slots.
+  Page or section header, with optional eyebrow, subtitle, and actions.
+
+      <.header>
+        Team settings
+        <:eyebrow>Workspace</:eyebrow>
+        <:subtitle>Manage members and their permissions.</:subtitle>
+        <:actions><.button variant="primary">Invite</.button></:actions>
+      </.header>
+
+  `level` picks the heading element so a section header doesn't emit a
+  second `<h1>`; `size` picks the type scale independently, and
+  `title_class` overrides it outright when the app has its own display
+  face. The header carries no outer spacing — the parent owns that.
   """
   attr :class, :any, default: nil
+  attr :title_class, :any, default: nil, doc: "Replaces the heading's type scale."
+  attr :level, :string, values: ~w(h1 h2 h3), default: "h1"
+  attr :size, :string, values: ~w(page section), default: "section"
   attr :rest, :global
 
   slot :inner_block, required: true
+  slot :eyebrow
   slot :subtitle
   slot :actions
 
   def header(assigns) do
+    sizes = %{
+      "page" => "text-3xl font-semibold leading-tight tracking-tight",
+      "section" => "text-lg font-semibold leading-8"
+    }
+
+    assigns = assign(assigns, :size_class, Map.fetch!(sizes, assigns.size))
+
     ~H"""
     <header
       data-component="JobyKit.CoreComponents.header"
-      class={[@actions != [] && "flex items-center justify-between gap-6", "pb-4", @class]}
+      class={[@actions != [] && "flex items-center justify-between gap-6", @class]}
       {@rest}
     >
       <div>
-        <h1 class="text-lg font-semibold leading-8">
+        <p
+          :if={@eyebrow != []}
+          class="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-base-content/55"
+        >
+          {render_slot(@eyebrow)}
+        </p>
+        <.dynamic_tag tag_name={@level} class={@title_class || @size_class}>
           {render_slot(@inner_block)}
-        </h1>
+        </.dynamic_tag>
         <p :if={@subtitle != []} class="text-sm text-base-content/70">
           {render_slot(@subtitle)}
         </p>
@@ -244,18 +325,42 @@ defmodule JobyKit.CoreComponents do
   # -------------------------------------------------------------- table
 
   @doc """
-  Generic table with `:col` slots and an optional `:action` slot. Accepts
-  either a regular list or a LiveView stream (see `Phoenix.LiveView.stream/4`)
-  for `:rows`.
+  Generic table with `:col` slots and an optional `:action` slot.
+
+  `:rows` takes a plain list or a LiveView stream (see
+  `Phoenix.LiveView.stream/4`).
 
       <.table id="users" rows={@users}>
         <:col :let={user} label="id">{user.id}</:col>
         <:col :let={user} label="username">{user.username}</:col>
+        <:empty>No users yet.</:empty>
       </.table>
+
+  ## Streams enumerate as `{dom_id, item}`
+
+  A stream yields tuples, so destructure in the slot — or hand the
+  unwrapping to `row_item`:
+
+      <:col :let={{_id, user}} label="id">{user.id}</:col>
+      <.table id="users" rows={@stream} row_item={fn {_id, u} -> u end}>
+
+  ## Styling hooks
+
+  `zebra={false}` drops the striping, `size` sets density, and the
+  action cell carries `data-table-actions` so a host override can target
+  it precisely instead of guessing with `:last-child`.
   """
   attr :id, :string, required: true
-  attr :rows, :list, required: true
+
+  attr :rows, :any,
+    required: true,
+    doc:
+      "A list, or a LiveView stream from `Phoenix.LiveView.stream/4` " <>
+        "(which enumerates as `{dom_id, item}`)."
+
   attr :class, :any, default: nil
+  attr :zebra, :boolean, default: true
+  attr :size, :string, values: ~w(xs sm md lg), default: "md"
   attr :row_id, :any, default: nil
   attr :row_click, :any, default: nil
   attr :row_item, :any, default: &Function.identity/1
@@ -266,17 +371,25 @@ defmodule JobyKit.CoreComponents do
   end
 
   slot :action
+  slot :empty, doc: "Rendered in place of the body when there are no rows."
 
   def table(assigns) do
+    sizes = %{"xs" => "table-xs", "sm" => "table-sm", "md" => nil, "lg" => "table-lg"}
+
     assigns =
-      with %{rows: %Phoenix.LiveView.LiveStream{}} <- assigns do
-        assign(assigns, row_id: assigns.row_id || fn {id, _item} -> id end)
-      end
+      assigns
+      |> assign(:size_class, Map.fetch!(sizes, assigns.size))
+      |> then(fn assigns ->
+        with %{rows: %Phoenix.LiveView.LiveStream{}} <- assigns do
+          assign(assigns, row_id: assigns.row_id || fn {id, _item} -> id end)
+        end
+      end)
+      |> then(&assign(&1, :empty?, &1.empty != [] and empty_rows?(&1.rows)))
 
     ~H"""
     <table
       data-component="JobyKit.CoreComponents.table"
-      class={["table table-zebra", @class]}
+      class={["table", @zebra && "table-zebra", @size_class, @class]}
       {@rest}
     >
       <thead>
@@ -288,6 +401,11 @@ defmodule JobyKit.CoreComponents do
         </tr>
       </thead>
       <tbody id={@id} phx-update={is_struct(@rows, Phoenix.LiveView.LiveStream) && "stream"}>
+        <tr :if={@empty?}>
+          <td colspan={length(@col) + if(@action != [], do: 1, else: 0)}>
+            {render_slot(@empty)}
+          </td>
+        </tr>
         <tr :for={row <- @rows} id={@row_id && @row_id.(row)}>
           <td
             :for={col <- @col}
@@ -296,7 +414,11 @@ defmodule JobyKit.CoreComponents do
           >
             {render_slot(col, @row_item.(row))}
           </td>
-          <td :if={@action != []} class="w-0 font-semibold whitespace-nowrap">
+          <td
+            :if={@action != []}
+            data-table-actions
+            class="w-0 font-semibold whitespace-nowrap"
+          >
             <div class="flex gap-4">
               <%= for action <- @action do %>
                 {render_slot(action, @row_item.(row))}
@@ -308,6 +430,13 @@ defmodule JobyKit.CoreComponents do
     </table>
     """
   end
+
+  # A stream is only known-empty when its pending inserts are empty and it
+  # isn't resetting; anything else we treat as "has rows" so the empty state
+  # can't flash over live content.
+  defp empty_rows?(%Phoenix.LiveView.LiveStream{inserts: inserts}), do: inserts == []
+  defp empty_rows?(rows) when is_list(rows), do: rows == []
+  defp empty_rows?(rows), do: Enum.empty?(rows)
 
   # -------------------------------------------------------------- flash
 
@@ -439,10 +568,21 @@ defmodule JobyKit.CoreComponents do
 
   ## Class composition
 
-  The wrapper composes the daisyUI input class set internally
-  (`input` / `select` / `textarea` / `checkbox`). Passing `class` adds
-  utilities **on top** of those — it does not replace them. To toggle
-  variants (`size`, error state) the wrapper uses dedicated logic.
+  `class` and any global attributes land on the **root** `<fieldset>`,
+  the same as every other kit wrapper — use it for layout (grid
+  placement, width, margins). `input_class` adds utilities to the
+  control itself, on top of the daisyUI class set the wrapper composes
+  (`input` / `select` / `textarea` / `checkbox`).
+
+      <.input field={@form[:email]} class="col-span-2" input_class="font-mono" />
+
+  The wrapper carries **no outer margin**. Spacing belongs to the
+  parent — reach for `space-y-*` or `gap-*` on the container.
+
+  Width works through the root: the control is always `w-full`, so
+  constrain the root and the control follows.
+
+      <.input field={@form[:code]} class="w-32" />
   """
   attr :id, :any, default: nil
   attr :name, :any
@@ -461,7 +601,8 @@ defmodule JobyKit.CoreComponents do
   attr :prompt, :string, default: nil
   attr :options, :list
   attr :multiple, :boolean, default: false
-  attr :class, :any, default: nil
+  attr :class, :any, default: nil, doc: "Utilities for the root fieldset — layout, width, spacing."
+  attr :input_class, :any, default: nil, doc: "Utilities for the control itself."
 
   attr :rest, :global,
     include: ~w(accept autocomplete capture cols disabled form list max maxlength min minlength
@@ -498,7 +639,7 @@ defmodule JobyKit.CoreComponents do
       end)
 
     ~H"""
-    <div class="fieldset mb-2" data-component="JobyKit.CoreComponents.input">
+    <fieldset class={["fieldset", @class]} data-component="JobyKit.CoreComponents.input">
       <label for={@id}>
         <input
           type="hidden"
@@ -514,68 +655,92 @@ defmodule JobyKit.CoreComponents do
             name={@name}
             value="true"
             checked={@checked}
-            class={["checkbox checkbox-sm", @class]}
+            class={["checkbox checkbox-sm", @input_class]}
+            aria-invalid={@errors != [] && "true"}
+            aria-describedby={@errors != [] && error_id(@id)}
             {@rest}
           />{@label}
         </span>
       </label>
-      <.error :for={msg <- @errors}>{msg}</.error>
-    </div>
+      <.error_list errors={@errors} id={error_id(@id)} />
+    </fieldset>
     """
   end
 
   def input(%{type: "select"} = assigns) do
     ~H"""
-    <div class="fieldset mb-2" data-component="JobyKit.CoreComponents.input">
+    <fieldset class={["fieldset", @class]} data-component="JobyKit.CoreComponents.input">
       <label for={@id}>
-        <span :if={@label} class="label mb-1">{@label}</span>
+        <span :if={@label} class="label">{@label}</span>
         <select
           id={@id}
           name={@name}
-          class={["w-full select", @errors != [] && "select-error", @class]}
+          class={["w-full select", @errors != [] && "select-error", @input_class]}
           multiple={@multiple}
+          aria-invalid={@errors != [] && "true"}
+          aria-describedby={@errors != [] && error_id(@id)}
           {@rest}
         >
           <option :if={@prompt} value="">{@prompt}</option>
           {Phoenix.HTML.Form.options_for_select(@options, @value)}
         </select>
       </label>
-      <.error :for={msg <- @errors}>{msg}</.error>
-    </div>
+      <.error_list errors={@errors} id={error_id(@id)} />
+    </fieldset>
     """
   end
 
   def input(%{type: "textarea"} = assigns) do
     ~H"""
-    <div class="fieldset mb-2" data-component="JobyKit.CoreComponents.input">
+    <fieldset class={["fieldset", @class]} data-component="JobyKit.CoreComponents.input">
       <label for={@id}>
-        <span :if={@label} class="label mb-1">{@label}</span>
+        <span :if={@label} class="label">{@label}</span>
         <textarea
           id={@id}
           name={@name}
-          class={["w-full textarea", @errors != [] && "textarea-error", @class]}
+          class={["w-full textarea", @errors != [] && "textarea-error", @input_class]}
+          aria-invalid={@errors != [] && "true"}
+          aria-describedby={@errors != [] && error_id(@id)}
           {@rest}
         >{Phoenix.HTML.Form.normalize_value("textarea", @value)}</textarea>
       </label>
-      <.error :for={msg <- @errors}>{msg}</.error>
-    </div>
+      <.error_list errors={@errors} id={error_id(@id)} />
+    </fieldset>
     """
   end
 
   def input(assigns) do
     ~H"""
-    <div class="fieldset mb-2" data-component="JobyKit.CoreComponents.input">
+    <fieldset class={["fieldset", @class]} data-component="JobyKit.CoreComponents.input">
       <label for={@id}>
-        <span :if={@label} class="label mb-1">{@label}</span>
+        <span :if={@label} class="label">{@label}</span>
         <input
           type={@type}
           name={@name}
           id={@id}
           value={Phoenix.HTML.Form.normalize_value(@type, @value)}
-          class={["w-full input", @errors != [] && "input-error", @class]}
+          class={["w-full input", @errors != [] && "input-error", @input_class]}
+          aria-invalid={@errors != [] && "true"}
+          aria-describedby={@errors != [] && error_id(@id)}
           {@rest}
         />
       </label>
+      <.error_list errors={@errors} id={error_id(@id)} />
+    </fieldset>
+    """
+  end
+
+  defp error_id(nil), do: nil
+  defp error_id(id), do: "#{id}-error"
+
+  attr :errors, :list, required: true
+  attr :id, :string, default: nil
+
+  # One container per field so `aria-describedby` has a single target,
+  # however many messages there are.
+  defp error_list(assigns) do
+    ~H"""
+    <div :if={@errors != []} id={@id}>
       <.error :for={msg <- @errors}>{msg}</.error>
     </div>
     """
@@ -585,8 +750,9 @@ defmodule JobyKit.CoreComponents do
   slot :inner_block, required: true
 
   defp error(assigns) do
+    # No top margin: the daisy `fieldset` root is a grid with its own gap.
     ~H"""
-    <p class="mt-1.5 flex gap-2 items-center text-sm text-error" {@rest}>
+    <p class="flex gap-2 items-center text-sm text-error" {@rest}>
       <.icon name="hero-exclamation-circle" class="size-5" />
       {render_slot(@inner_block)}
     </p>

@@ -205,16 +205,109 @@ defmodule JobyKit.CoreComponentsTest do
       assert html =~ "Agreed"
     end
 
-    test "class is additive for text inputs" do
+    test "class lands on the root fieldset, input_class on the control" do
+      # 0.3.0 contract: `class` is layout and belongs to the root, like every
+      # other kit wrapper. Before, it hit the control, so the field group's
+      # own box was unreachable and callers resorted to magic-number nudges
+      # on neighbouring elements.
       assigns = %{}
 
       html =
         rendered_to_string(
-          ~H|<CoreComponents.input name="q" value="" type="text" class="max-w-md" />|
+          ~H|<CoreComponents.input name="q" value="" type="text" class="col-span-2" input_class="font-mono" />|
         )
 
-      assert html =~ "max-w-md"
-      assert html =~ ~r/class="[^"]*\binput\b/
+      assert root_class(html) =~ "fieldset"
+      assert root_class(html) =~ "col-span-2"
+      refute root_class(html) =~ "font-mono"
+
+      control = control_class(html)
+      assert control =~ "input"
+      assert control =~ "font-mono"
+      refute control =~ "col-span-2"
+    end
+
+    test "the root carries no outer margin" do
+      # Every consumer app fought the old hardcoded mb-2 — and couldn't
+      # reach it, since class went to the control.
+      assigns = %{}
+      html = rendered_to_string(~H|<CoreComponents.input name="q" value="" type="text" />|)
+
+      refute root_class(html) =~ ~r/\bm[btlrxy]?-\d/
+    end
+
+    test "the root is a semantic fieldset" do
+      assigns = %{}
+      html = rendered_to_string(~H|<CoreComponents.input name="q" value="" type="text" />|)
+
+      assert html =~ "<fieldset"
+    end
+
+    test "width is controlled through the root; the control fills it" do
+      assigns = %{}
+      html = rendered_to_string(~H|<CoreComponents.input name="q" value="" type="text" class="w-32" />|)
+
+      assert root_class(html) =~ "w-32"
+      assert control_class(html) =~ "w-full"
+    end
+
+    test "control attributes still pass through to the control, not the fieldset" do
+      # :rest carries placeholder/required/readonly/... — putting those on a
+      # fieldset would be meaningless markup.
+      assigns = %{}
+
+      html =
+        rendered_to_string(
+          ~H|<CoreComponents.input name="q" value="" type="text" placeholder="Search" required />|
+        )
+
+      assert html =~ ~r/<input[^>]*placeholder="Search"/
+      assert html =~ ~r/<input[^>]*required/
+      refute html =~ ~r/<fieldset[^>]*placeholder/
+    end
+
+    for {type, tag} <- [{"text", "input"}, {"select", "select"}, {"textarea", "textarea"}, {"checkbox", "input"}] do
+      test "#{type} associates its errors with the control for screen readers" do
+        assigns = %{type: unquote(type), tag: unquote(tag)}
+
+        html =
+          rendered_to_string(~H"""
+          <CoreComponents.input
+            name="q"
+            id="q"
+            value=""
+            type={@type}
+            options={[a: "a"]}
+            errors={["is invalid"]}
+          />
+          """)
+
+        assert html =~ ~s|aria-invalid="true"|
+        assert html =~ ~s|aria-describedby="q-error"|
+        # …and the id it points at actually exists in the markup.
+        assert html =~ ~s|id="q-error"|
+      end
+    end
+
+    test "a clean field carries no aria-invalid" do
+      assigns = %{}
+      html = rendered_to_string(~H|<CoreComponents.input name="q" id="q" value="" type="text" />|)
+
+      refute html =~ "aria-invalid"
+      refute html =~ "aria-describedby"
+    end
+
+    test "multiple errors share one described-by container" do
+      assigns = %{}
+
+      html =
+        rendered_to_string(
+          ~H|<CoreComponents.input name="q" id="q" value="" type="text" errors={["too short", "is invalid"]} />|
+        )
+
+      assert count(html, ~s|id="q-error"|) == 1
+      assert html =~ "too short"
+      assert html =~ "is invalid"
     end
   end
 
@@ -546,11 +639,261 @@ defmodule JobyKit.CoreComponentsTest do
     end
   end
 
+  # ------------------------------------------------------------------
+  # 0.3.0 de-opinionation. Three consumer apps independently reported
+  # routing around baked-in spacing, typography, and missing variants;
+  # these lock in the replacements.
+
+  describe "button tones and shapes" do
+    test "every declared variant maps to a distinct daisy class" do
+      assigns = %{}
+
+      classes =
+        for v <- ~w(soft primary neutral ghost danger), into: %{} do
+          assigns = Map.put(assigns, :v, v)
+          {v, root_class(rendered_to_string(~H|<CoreComponents.button variant={@v}>x</CoreComponents.button>|))}
+        end
+
+      assert classes["primary"] =~ "btn-primary"
+      assert classes["neutral"] =~ "btn-neutral"
+      assert classes["ghost"] =~ "btn-ghost"
+      assert classes["danger"] =~ "btn-error"
+      assert classes["soft"] =~ "btn-soft"
+
+      # A destructive action must not read the same as a benign one.
+      refute classes["danger"] == classes["primary"]
+    end
+
+    test "the default is unchanged, and nameable as soft for computed callers" do
+      assigns = %{}
+
+      default = root_class(rendered_to_string(~H|<CoreComponents.button>x</CoreComponents.button>|))
+      soft = root_class(rendered_to_string(~H|<CoreComponents.button variant="soft">x</CoreComponents.button>|))
+
+      assert default == soft
+    end
+
+    test "xs joins the size scale" do
+      assigns = %{}
+      assert root_class(rendered_to_string(~H|<CoreComponents.button size="xs">x</CoreComponents.button>|)) =~ "btn-xs"
+    end
+
+    test "shape gives an icon-only button its square/circle box" do
+      assigns = %{}
+
+      circle = root_class(rendered_to_string(~H|<CoreComponents.button shape="circle">x</CoreComponents.button>|))
+      square = root_class(rendered_to_string(~H|<CoreComponents.button shape="square">x</CoreComponents.button>|))
+      plain = root_class(rendered_to_string(~H|<CoreComponents.button>x</CoreComponents.button>|))
+
+      assert circle =~ "btn-circle"
+      assert square =~ "btn-square"
+      refute plain =~ "btn-circle"
+    end
+  end
+
+  describe "card body opinions" do
+    test "body content renders as a direct card-body child so the gap applies" do
+      # Previously wrapped in a prose div, which made card-body's gap-2 dead
+      # weight and forced callers to hand-add margins between children.
+      assigns = %{}
+
+      html =
+        rendered_to_string(~H"""
+        <CoreComponents.card>
+          <:title>T</:title>
+          <p id="body-child">Body</p>
+        </CoreComponents.card>
+        """)
+
+      assert html =~ ~r/<div class="card-body[^"]*">.*<p id="body-child"/s
+    end
+
+    test "typography is opt-in, not imposed" do
+      assigns = %{}
+
+      plain = rendered_to_string(~H|<CoreComponents.card>Body</CoreComponents.card>|)
+      prose = rendered_to_string(~H|<CoreComponents.card prose>Body</CoreComponents.card>|)
+
+      refute plain =~ "text-base-content/70"
+      assert prose =~ "text-base-content/70"
+    end
+
+    test "body_class reaches the card-body element" do
+      assigns = %{}
+      html = rendered_to_string(~H|<CoreComponents.card body_class="text-base">B</CoreComponents.card>|)
+
+      assert html =~ ~r/class="card-body[^"]*text-base/
+    end
+
+    test "actions carry no hardcoded top margin" do
+      assigns = %{}
+
+      html =
+        rendered_to_string(~H"""
+        <CoreComponents.card>
+          B
+          <:actions>A</:actions>
+        </CoreComponents.card>
+        """)
+
+      assert html =~ ~s|class="card-actions"|
+    end
+  end
+
+  describe "header" do
+    test "carries no outer spacing" do
+      assigns = %{}
+      html = rendered_to_string(~H|<CoreComponents.header>Title</CoreComponents.header>|)
+
+      refute root_class(html) =~ "pb-4"
+    end
+
+    test "renders the eyebrow slot both consumer apps hand-rolled" do
+      assigns = %{}
+
+      html =
+        rendered_to_string(~H"""
+        <CoreComponents.header>
+          Team settings
+          <:eyebrow>Workspace</:eyebrow>
+        </CoreComponents.header>
+        """)
+
+      assert html =~ "Workspace"
+      assert html =~ "Team settings"
+    end
+
+    test "level picks the heading element so sections don't emit a second h1" do
+      assigns = %{}
+
+      assert rendered_to_string(~H|<CoreComponents.header>T</CoreComponents.header>|) =~ "<h1"
+      assert rendered_to_string(~H|<CoreComponents.header level="h2">T</CoreComponents.header>|) =~ "<h2"
+      refute rendered_to_string(~H|<CoreComponents.header level="h2">T</CoreComponents.header>|) =~ "<h1"
+    end
+
+    test "size and title_class control the type scale independently of the tag" do
+      assigns = %{}
+
+      page = rendered_to_string(~H|<CoreComponents.header size="page">T</CoreComponents.header>|)
+      section = rendered_to_string(~H|<CoreComponents.header size="section">T</CoreComponents.header>|)
+      custom = rendered_to_string(~H|<CoreComponents.header title_class="font-display text-4xl">T</CoreComponents.header>|)
+
+      assert page =~ "text-3xl"
+      assert section =~ "text-lg"
+      assert custom =~ "font-display text-4xl"
+      refute custom =~ "text-lg"
+    end
+  end
+
+  describe "table styling hooks" do
+    test "the empty slot replaces the body when there are no rows" do
+      assigns = %{}
+
+      html =
+        rendered_to_string(~H"""
+        <CoreComponents.table id="t" rows={[]}>
+          <:col :let={r} label="Name">{r.name}</:col>
+          <:empty>No users yet.</:empty>
+        </CoreComponents.table>
+        """)
+
+      assert html =~ "No users yet."
+    end
+
+    test "the empty slot stays hidden when rows exist" do
+      assigns = %{rows: [%{name: "Ada"}]}
+
+      html =
+        rendered_to_string(~H"""
+        <CoreComponents.table id="t" rows={@rows}>
+          <:col :let={r} label="Name">{r.name}</:col>
+          <:empty>No users yet.</:empty>
+        </CoreComponents.table>
+        """)
+
+      assert html =~ "Ada"
+      refute html =~ "No users yet."
+    end
+
+    test "the empty row spans every column, actions included" do
+      assigns = %{}
+
+      html =
+        rendered_to_string(~H"""
+        <CoreComponents.table id="t" rows={[]}>
+          <:col :let={r} label="A">{r}</:col>
+          <:col :let={r} label="B">{r}</:col>
+          <:action :let={r}>{r}</:action>
+          <:empty>Nothing.</:empty>
+        </CoreComponents.table>
+        """)
+
+      assert html =~ ~s|colspan="3"|
+    end
+
+    test "zebra striping can be turned off" do
+      assigns = %{rows: [%{name: "Ada"}]}
+
+      on =
+        rendered_to_string(~H"""
+        <CoreComponents.table id="t" rows={@rows}>
+          <:col :let={r} label="Name">{r.name}</:col>
+        </CoreComponents.table>
+        """)
+
+      off =
+        rendered_to_string(~H"""
+        <CoreComponents.table id="t" rows={@rows} zebra={false}>
+          <:col :let={r} label="Name">{r.name}</:col>
+        </CoreComponents.table>
+        """)
+
+      assert on =~ "table-zebra"
+      refute off =~ "table-zebra"
+    end
+
+    test "size sets density without leaking daisy class names through class" do
+      assigns = %{rows: [%{name: "Ada"}]}
+
+      html =
+        rendered_to_string(~H"""
+        <CoreComponents.table id="t" rows={@rows} size="xs">
+          <:col :let={r} label="Name">{r.name}</:col>
+        </CoreComponents.table>
+        """)
+
+      assert root_class(html) =~ "table-xs"
+    end
+
+    test "the action cell is addressable, so host overrides need not guess with :last-child" do
+      assigns = %{rows: [%{id: 1}]}
+
+      html =
+        rendered_to_string(~H"""
+        <CoreComponents.table id="t" rows={@rows}>
+          <:col :let={r} label="A">{r.id}</:col>
+          <:action :let={r}>edit-{r.id}</:action>
+        </CoreComponents.table>
+        """)
+
+      assert html =~ "data-table-actions"
+    end
+  end
+
   defp count(haystack, needle), do: length(String.split(haystack, needle)) - 1
 
   # The class attribute of the first (root) element in the rendered markup.
   defp root_class(html) do
     [_, class] = Regex.run(~r/class="([^"]*)"/, html)
+    class
+  end
+
+  # The class attribute on the form control itself (input/select/textarea),
+  # skipping the wrapper. Matches the element carrying the daisy control class.
+  defp control_class(html) do
+    [_, class] =
+      Regex.run(~r/<(?:input|select|textarea)[^>]*class="([^"]*\b(?:input|select|textarea|checkbox)\b[^"]*)"/, html)
+
     class
   end
 end

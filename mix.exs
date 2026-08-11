@@ -53,14 +53,15 @@ defmodule JobyKit.MixProject do
         "GitHub" => @source_url
       },
       files:
-        ~w(lib priv/templates .formatter.exs mix.exs README.md LICENSE CHANGELOG.md)
+        ~w(lib priv/templates .formatter.exs mix.exs README.md LICENSE CHANGELOG.md
+           MIGRATING-0.3.md)
     ]
   end
 
   defp docs do
     [
       main: "readme",
-      extras: ["README.md", "CHANGELOG.md"],
+      extras: ["README.md", "CHANGELOG.md", "MIGRATING-0.3.md"],
       source_url: @source_url,
       source_ref: "v#{@version}",
       # These are referenced by name in the README/CHANGELOG prose but are

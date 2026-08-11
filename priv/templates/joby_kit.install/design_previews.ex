@@ -25,11 +25,22 @@ defmodule <%= @web_module %>.DesignPreviews do
 
   def button_preview(assigns) do
     ~H"""
-    <div class="flex flex-wrap items-center gap-2">
-      <CoreComponents.button>Default</CoreComponents.button>
-      <CoreComponents.button variant="primary">Primary</CoreComponents.button>
-      <CoreComponents.button size="sm">Small</CoreComponents.button>
-      <CoreComponents.button size="lg">Large</CoreComponents.button>
+    <div class="flex flex-col gap-3">
+      <div class="flex flex-wrap items-center gap-2">
+        <CoreComponents.button>Default</CoreComponents.button>
+        <CoreComponents.button variant="primary">Primary</CoreComponents.button>
+        <CoreComponents.button variant="neutral">Neutral</CoreComponents.button>
+        <CoreComponents.button variant="ghost">Ghost</CoreComponents.button>
+        <CoreComponents.button variant="danger">Delete</CoreComponents.button>
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
+        <CoreComponents.button size="xs">XS</CoreComponents.button>
+        <CoreComponents.button size="sm">Small</CoreComponents.button>
+        <CoreComponents.button size="lg">Large</CoreComponents.button>
+        <CoreComponents.button shape="circle" variant="ghost" aria-label="Close">
+          <CoreComponents.icon name="hero-x-mark" class="size-4" />
+        </CoreComponents.button>
+      </div>
     </div>
     """
   end
@@ -94,8 +105,9 @@ defmodule <%= @web_module %>.DesignPreviews do
 
   def header_preview(assigns) do
     ~H"""
-    <CoreComponents.header>
+    <CoreComponents.header level="h2">
       Team settings
+      <:eyebrow>Workspace</:eyebrow>
       <:subtitle>Manage members and their permissions.</:subtitle>
       <:actions>
         <CoreComponents.button variant="primary">Invite</CoreComponents.button>
@@ -126,8 +138,9 @@ defmodule <%= @web_module %>.DesignPreviews do
       <:col :let={row} label="Name">{row.name}</:col>
       <:col :let={row} label="Role">{row.role}</:col>
       <:action :let={row}>
-        <CoreComponents.button size="sm">Edit {row.id}</CoreComponents.button>
+        <CoreComponents.button size="xs">Edit {row.id}</CoreComponents.button>
       </:action>
+      <:empty>No members yet.</:empty>
     </CoreComponents.table>
     """
   end
