@@ -5,6 +5,11 @@ This project uses [JobyKit](https://github.com/jobycorp/joby_kit). Every UI
 primitive flows through a registered wrapper. Skipping the wrapper layer is
 the failure mode this kit exists to prevent.
 
+This block is the short form. The full specification — build order,
+wrapper contract, composition rules, where components go — is the
+"JobyKit guidelines" section of `AGENTS.md`. Follow that; when the two
+disagree, `AGENTS.md` wins.
+
 ### Hard rules
 
 1. **No raw `<button>`, `<input>`, `<textarea>`, `<select>` in `.heex`** unless
@@ -60,7 +65,8 @@ line to silence the lint rule.
 - `curl http://localhost:PORT/design.json` — machine-readable manifest
 - `/design` — kit-curated wrapper previews
 - `/custom-designs` — this app's composites and domain components
-- `AGENTS.md` → "JobyKit guidelines" — full build order and rationale
+- `AGENTS.md` → "JobyKit guidelines" — the full spec: build order,
+  wrapper contract, composition rules, rationale
 
 ### Build order (in order, every time)
 
@@ -70,6 +76,7 @@ line to silence the lint rule.
 4. daisyUI primitive exists? Wrap it (register in `DesignManifest`), then use.
 5. None of the above? Tailwind + theme tokens; expose the result as a
    wrapper or composite and register it.
+
 ### When you build a new wrapper: own your box, nothing outside it
 
 The rule the kit follows, and the one your components should:

@@ -8,6 +8,33 @@
 > kept the identical bug. `mix joby_kit.lint` now reports
 > `:forked_wrapper`, and `/design.json` carries `forked_from_kit`.
 
+## v0.3.3
+
+### `AGENTS.md` is the spec; `CLAUDE.md` is the summary
+
+The installed `CLAUDE.md` block named the `:raw_html_primitive` lint rule
+and the `jobykit:allow-raw-html` escape hatch, and the installed
+`AGENTS.md` block did not — so an agent reading only `AGENTS.md` had no
+way to silence a genuine one-off, and an agent reading only `CLAUDE.md`
+had no build order beyond the five-line summary.
+
+* `AGENTS.md.section` now names the lint rule under "Read these first"
+  and gains a "When you genuinely need raw HTML" section covering both
+  marker forms (`<%!-- jobykit:allow-raw-html --%>` in `.heex`,
+  `# jobykit:allow-raw-html` before an `~H` line in `.ex`).
+* `CLAUDE.md.section` now says up front that it is the short form and
+  that the "JobyKit guidelines" section of `AGENTS.md` is the
+  specification to follow when the two disagree.
+* Both templates were missing the blank line before "When you build a
+  new wrapper: own your box", so that heading rendered glued to the
+  previous paragraph.
+
+**Existing installs are not refreshed.** The patchers append the block
+only when the markers are absent, so an app installed at an earlier
+version keeps its earlier block. To pick this up, delete the
+`<!-- jobykit:start -->` … `<!-- jobykit:end -->` block from both files
+and re-run `mix joby_kit.install`.
+
 ## v0.3.2
 
 Two fixes to the same flaw, found while migrating the first app: the

@@ -47,4 +47,11 @@ defmodule JobyKit.ClaudeMdTest do
     assert section =~ "jobykit:allow-raw-html"
     assert section =~ "mix joby_kit.lint"
   end
+
+  test "default section defers to AGENTS.md as the full spec" do
+    section = ClaudeMd.default_section()
+
+    assert section =~ "`AGENTS.md` wins"
+    assert section =~ "JobyKit guidelines"
+  end
 end

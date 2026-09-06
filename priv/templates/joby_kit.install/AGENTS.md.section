@@ -18,7 +18,10 @@ Before writing **any** UI markup, execute these in order:
 3. **Open `/custom-designs`** — this app's generic composites and
    domain components.
 4. **After writing UI, run `mix joby_kit.lint`** — confirms the
-   contract holds end-to-end.
+   contract holds end-to-end. Its `:raw_html_primitive` rule catches
+   raw `<button>` / `<input>` / `<textarea>` / `<select>` outside a
+   wrapper definition; the other rules catch missing `data-component`,
+   missing `attr :rest, :global`, and unregistered components.
 
 ### Symptoms you skipped step 1
 
@@ -128,6 +131,25 @@ a deliberate addition, not a duplicate.
    Components missing from the manifest are invisible to agents. Run
    `mix joby_kit.lint` to verify the contract holds before merging.
 
+### When you genuinely need raw HTML
+
+Inside a wrapper definition — a `def` whose root element carries
+`data-component` — raw HTML primitives are the wrapper's body. That is
+how wrappers work, and `:raw_html_primitive` does not flag them.
+
+Outside wrapper territory, a raw `<button>`, `<input>`, `<textarea>`,
+or `<select>` is a lint warning. For a genuine one-off, silence it on
+that line rather than restructuring:
+
+- In `.heex`: `<%!-- jobykit:allow-raw-html --%>` on the same line or
+  the line immediately before.
+- In an `~H` sigil inside `.ex`: `# jobykit:allow-raw-html` on the
+  preceding line.
+
+The marker is a signed exception, not a bypass. If you reach for it
+twice for the same element, that element is a wrapper waiting to be
+registered.
+
 ### Testing
 
 Test what's in the contract — attrs, slots, behavior, observable IDs
@@ -164,6 +186,7 @@ This rule is about the *primitive layer*. Tailwind utilities for
 layout, spacing, motion, gradients, and visual hierarchy on the page
 that *composes* those wrappers are encouraged — see "Composition vs.
 creation" above.
+
 ### When you build a new wrapper: own your box, nothing outside it
 
 The rule the kit follows, and the one your components should:

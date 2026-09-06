@@ -73,6 +73,16 @@ defmodule JobyKit.AgentsMdTest do
     assert AgentsMd.patch(path) == :unchanged
   end
 
+  test "default section is the full spec: names the lint rule and the escape hatch" do
+    section = AgentsMd.default_section()
+
+    assert section =~ ":raw_html_primitive"
+    assert section =~ "jobykit:allow-raw-html"
+    assert section =~ "Five-step build order"
+    assert section =~ "own your box"
+    assert section =~ "/design.json"
+  end
+
   describe "rule rewrites for kit-owned components" do
     test "rewrites Phoenix's <.input> rule to point at JobyKit.CoreComponents", %{tmp_dir: dir} do
       path = Path.join(dir, "AGENTS.md")
